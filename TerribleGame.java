@@ -1,4 +1,4 @@
-// TerribleGame.java - A poorly coded game for educational purposes
+// TerribleGame.java - A poorly coded game for educational purposes (refactored)
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,109 +9,109 @@ import java.sql.*;
 
 public class TerribleGame extends JFrame implements KeyListener, ActionListener {
 
-    public static final int W = 800;
-    public static final int H = 600;
-    private static String usr = null;
-    private static Connection db = null;
-    private static final String DB_URL = "jdbc:sqlite:terrible_game_data.db";
+    public static final int GAME_WIDTH = 800;
+    public static final int GAME_HEIGHT = 600;
+    private static String currentUsername = null;
+    private static Connection databaseConnection = null;
+    private static final String DATABASE_URL = "jdbc:sqlite:terrible_game_data.db";
 
-    private GamePanel gp;
-    private javax.swing.Timer tm;
+    private GamePanel gamePanel;
+    private javax.swing.Timer gameTimer;
 
-    public int px;
-    public int py;
-    public int pw = 30;
-    public int ph = 15;
-    public int s = 5;
+    public int playerX;
+    public int playerY;
+    public int playerWidth = 30;
+    public int playerHeight = 15;
+    public int playerSpeed = 5;
 
-    public ArrayList<int[]> bt;
-    public ArrayList<int[]> gt;
-    public ArrayList<int[]> b;
+    public ArrayList<int[]> enemyList;
+    public ArrayList<int[]> powerUpList;
+    public ArrayList<int[]> bulletList;
 
-    public int sc = 0;
-    public int lv = 3;
-    public boolean go = false;
-    public boolean p = false;
-    public boolean run = false;
+    public int score = 0;
+    public int lives = 3;
+    public boolean gameOver = false;
+    public boolean paused = false;
+    public boolean gameRunning = false;
 
-    private boolean l = false;
-    private boolean r = false;
-    private boolean u = false;
-    private boolean d = false;
-    private boolean f = false;
+    private boolean moveLeft = false;
+    private boolean moveRight = false;
+    private boolean moveUp = false;
+    private boolean moveDown = false;
+    private boolean fireTriggered = false;
 
-    private Random rg = new Random();
+    private Random randomGenerator = new Random();
 
-    private JTextField uf;
-    private JPasswordField pf;
-    private JButton lb;
-    private JButton rb;
-    private JLabel sl;
-    private JPanel lp;
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JButton loginButton;
+    private JButton registerButton;
+    private JLabel statusLabel;
+    private JPanel loginPanel;
 
     public TerribleGame() {
         super("The Terrible Space Game");
 
-        dbSetup();
-        dbInit();
+        setupDatabaseConnection();
+        initializeDatabaseTables();
 
-        setSize(W, H);
+        setSize(GAME_WIDTH, GAME_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
 
-        lp = new JPanel();
-        lp.setLayout(null);
-        lp.setBackground(Color.DARK_GRAY);
+        loginPanel = new JPanel();
+        loginPanel.setLayout(null);
+        loginPanel.setBackground(Color.DARK_GRAY);
 
-        JLabel ul = new JLabel("Username:");
-        ul.setBounds(300, 150, 80, 25);
-        ul.setForeground(Color.WHITE);
-        lp.add(ul);
+        JLabel usernameLabel = new JLabel("Username:");
+        usernameLabel.setBounds(300, 150, 80, 25);
+        usernameLabel.setForeground(Color.WHITE);
+        loginPanel.add(usernameLabel);
 
-        uf = new JTextField();
-        uf.setBounds(400, 150, 160, 25);
-        lp.add(uf);
+        usernameField = new JTextField();
+        usernameField.setBounds(400, 150, 160, 25);
+        loginPanel.add(usernameField);
 
-        JLabel pl = new JLabel("Password:");
-        pl.setBounds(300, 190, 80, 25);
-        pl.setForeground(Color.WHITE);
-        lp.add(pl);
+        JLabel passwordLabel = new JLabel("Password:");
+        passwordLabel.setBounds(300, 190, 80, 25);
+        passwordLabel.setForeground(Color.WHITE);
+        loginPanel.add(passwordLabel);
 
-        pf = new JPasswordField();
-        pf.setBounds(400, 190, 160, 25);
-        lp.add(pf);
+        passwordField = new JPasswordField();
+        passwordField.setBounds(400, 190, 160, 25);
+        loginPanel.add(passwordField);
 
-        lb = new JButton("Login");
-        lb.setBounds(300, 230, 120, 30);
-        lb.addActionListener(this);
-        lp.add(lb);
+        loginButton = new JButton("Login");
+        loginButton.setBounds(300, 230, 120, 30);
+        loginButton.addActionListener(this);
+        loginPanel.add(loginButton);
 
-        rb = new JButton("Register");
-        rb.setBounds(440, 230, 120, 30);
-        rb.addActionListener(this);
-        lp.add(rb);
+        registerButton = new JButton("Register");
+        registerButton.setBounds(440, 230, 120, 30);
+        registerButton.addActionListener(this);
+        loginPanel.add(registerButton);
 
-        sl = new JLabel("");
-        sl.setBounds(300, 270, 260, 25);
-        sl.setForeground(Color.RED);
-        sl.setHorizontalAlignment(SwingConstants.CENTER);
-        lp.add(sl);
+        statusLabel = new JLabel("");
+        statusLabel.setBounds(300, 270, 260, 25);
+        statusLabel.setForeground(Color.RED);
+        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        loginPanel.add(statusLabel);
 
-        JTextArea hs = new JTextArea();
-        hs.setBounds(50, 350, W - 100, 200);
-        hs.setEditable(false);
-        hs.setForeground(Color.CYAN);
-        hs.setBackground(Color.BLACK);
-        hs.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        lp.add(hs);
-        showHS(hs);
+        JTextArea highScoreTextArea = new JTextArea();
+        highScoreTextArea.setBounds(50, 350, GAME_WIDTH - 100, 200);
+        highScoreTextArea.setEditable(false);
+        highScoreTextArea.setForeground(Color.CYAN);
+        highScoreTextArea.setBackground(Color.BLACK);
+        highScoreTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        loginPanel.add(highScoreTextArea);
+        displayHighScores(highScoreTextArea);
 
-        gp = new GamePanel();
-        gp.setPreferredSize(new Dimension(W, H));
-        gp.setBackground(Color.BLACK);
-        gp.setVisible(false);
+        gamePanel = new GamePanel();
+        gamePanel.setPreferredSize(new Dimension(GAME_WIDTH, GAME_HEIGHT));
+        gamePanel.setBackground(Color.BLACK);
+        gamePanel.setVisible(false);
 
-        add(lp, BorderLayout.CENTER);
+        add(loginPanel, BorderLayout.CENTER);
 
         addKeyListener(this);
         setFocusable(true);
@@ -120,14 +120,14 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         setLocationRelativeTo(null);
         setVisible(true);
 
-        tm = new javax.swing.Timer(16, this);
+        gameTimer = new javax.swing.Timer(16, this);
     }
 
-    private void dbSetup() {
+    private void setupDatabaseConnection() {
         try {
             Class.forName("org.sqlite.JDBC");
-            if (db == null || db.isClosed()) {
-                db = DriverManager.getConnection(DB_URL);
+            if (databaseConnection == null || databaseConnection.isClosed()) {
+                databaseConnection = DriverManager.getConnection(DATABASE_URL);
                 System.out.println("Database connection established.");
             }
         } catch (ClassNotFoundException e) {
@@ -141,26 +141,26 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         }
     }
 
-    private void dbInit() {
-         if (db == null) {
-             System.err.println("Cannot initialize DB tables, connection is null.");
-             return;
-         }
-        String sql1 = "CREATE TABLE IF NOT EXISTS users (" +
+    private void initializeDatabaseTables() {
+        if (databaseConnection == null) {
+            System.err.println("Cannot initialize DB tables, connection is null.");
+            return;
+        }
+        String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
                                     " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                                     " username TEXT UNIQUE NOT NULL," +
                                     " password TEXT NOT NULL" +
                                     ");";
-        String sql2 = "CREATE TABLE IF NOT EXISTS high_scores (" +
+        String createHighScoresTable = "CREATE TABLE IF NOT EXISTS high_scores (" +
                                       " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                                       " username TEXT NOT NULL," +
                                       " score INTEGER NOT NULL," +
                                       " timestamp DATETIME DEFAULT CURRENT_TIMESTAMP" +
                                       ");";
 
-        try (Statement st = db.createStatement()) {
-            st.execute(sql1);
-            st.execute(sql2);
+        try (Statement statement = databaseConnection.createStatement()) {
+            statement.execute(createUsersTable);
+            statement.execute(createHighScoresTable);
             System.out.println("Database tables checked/created.");
         } catch (SQLException e) {
             System.err.println("Error creating database tables: " + e.getMessage());
@@ -168,389 +168,385 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         }
     }
 
-    private boolean reg(String u, String p) {
-        if (u == null || u.trim().isEmpty() || p == null || p.isEmpty()) {
-            sl.setText("Username and password cannot be empty.");
+    private boolean registerUser(String username, String password) {
+        if (username == null || username.trim().isEmpty() || password == null || password.isEmpty()) {
+            statusLabel.setText("Username and password cannot be empty.");
             return false;
         }
-        String sql = "INSERT INTO users (username, password) VALUES ('" + u + "', '" + p + "')";
-
-        try (Statement st = db.createStatement()) {
-            String chk = "SELECT id FROM users WHERE username = '" + u + "'";
-            ResultSet rs = st.executeQuery(chk);
-            if (rs.next()) {
-                sl.setText("Username already exists.");
-                rs.close();
+        String insertUserSql = "INSERT INTO users (username, password) VALUES ('" + username + "', '" + password + "')";
+        try (Statement statement = databaseConnection.createStatement()) {
+            String checkUserSql = "SELECT id FROM users WHERE username = '" + username + "'";
+            ResultSet resultSet = statement.executeQuery(checkUserSql);
+            if (resultSet.next()) {
+                statusLabel.setText("Username already exists.");
+                resultSet.close();
                 return false;
             }
-            rs.close();
+            resultSet.close();
 
-            int r = st.executeUpdate(sql);
-            if (r > 0) {
-                sl.setText("Registration successful!");
+            int result = statement.executeUpdate(insertUserSql);
+            if (result > 0) {
+                statusLabel.setText("Registration successful!");
                 return true;
             } else {
-                sl.setText("Registration failed (database error).");
+                statusLabel.setText("Registration failed (database error).");
                 return false;
             }
         } catch (SQLException e) {
             System.err.println("Registration error: " + e.getMessage());
-            sl.setText("Registration failed: " + e.getMessage());
+            statusLabel.setText("Registration failed: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
-    private boolean login(String u, String p) {
-         if (u == null || u.trim().isEmpty() || p == null || p.isEmpty()) {
-            sl.setText("Username and password cannot be empty.");
+    private boolean loginUser(String username, String password) {
+        if (username == null || username.trim().isEmpty() || password == null || password.isEmpty()) {
+            statusLabel.setText("Username and password cannot be empty.");
             return false;
         }
-        String sql = "SELECT password FROM users WHERE username = '" + u + "'";
+        String querySql = "SELECT password FROM users WHERE username = '" + username + "'";
+        try (Statement statement = databaseConnection.createStatement();
+             ResultSet resultSet = statement.executeQuery(querySql)) {
 
-        try (Statement st = db.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-
-            if (rs.next()) {
-                String sp = rs.getString("password");
-                if (sp.equals(p)) {
+            if (resultSet.next()) {
+                String storedPassword = resultSet.getString("password");
+                if (storedPassword.equals(password)) {
                     return true;
                 } else {
-                    sl.setText("Incorrect password.");
+                    statusLabel.setText("Incorrect password.");
                     return false;
                 }
             } else {
-                sl.setText("Username not found.");
+                statusLabel.setText("Username not found.");
                 return false;
             }
         } catch (SQLException e) {
             System.err.println("Login error: " + e.getMessage());
-            sl.setText("Login failed: " + e.getMessage());
+            statusLabel.setText("Login failed: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
-    private void saveScore(String u, int s) {
-        if (u == null || s <= 0) {
-             System.err.println("Invalid data for saving score (User: " + u + ", Score: " + s + ")");
-             return;
+    private void saveScore(String username, int score) {
+        if (username == null || score <= 0) {
+            System.err.println("Invalid data for saving score (User: " + username + ", Score: " + score + ")");
+            return;
         }
-        String sql = "INSERT INTO high_scores (username, score) VALUES (?, ?)";
-
-        try (PreparedStatement ps = db.prepareStatement(sql)) {
-            ps.setString(1, u);
-            ps.setInt(2, s);
-            ps.executeUpdate();
-            System.out.println("Score " + s + " for user " + u + " saved.");
+        String insertScoreSql = "INSERT INTO high_scores (username, score) VALUES (?, ?)";
+        try (PreparedStatement preparedStatement = databaseConnection.prepareStatement(insertScoreSql)) {
+            preparedStatement.setString(1, username);
+            preparedStatement.setInt(2, score);
+            preparedStatement.executeUpdate();
+            System.out.println("Score " + score + " for user " + username + " saved.");
         } catch (SQLException e) {
             System.err.println("Error saving score: " + e.getMessage());
             e.printStackTrace();
         } catch (NullPointerException e) {
             System.err.println("Database connection is likely null. Cannot save score.");
-             e.printStackTrace();
+            e.printStackTrace();
         }
     }
 
-     private void showHS(JTextArea ta) {
-        String sql = "SELECT username, score FROM high_scores ORDER BY score DESC LIMIT 10";
-        StringBuilder st = new StringBuilder("--- High Scores ---\n");
+    private void displayHighScores(JTextArea highScoreTextArea) {
+        String queryHighScores = "SELECT username, score FROM high_scores ORDER BY score DESC LIMIT 10";
+        StringBuilder highScoreText = new StringBuilder("--- High Scores ---\n");
 
-        try (Statement s = db.createStatement();
-             ResultSet rs = s.executeQuery(sql)) {
+        try (Statement statement = databaseConnection.createStatement();
+             ResultSet resultSet = statement.executeQuery(queryHighScores)) {
 
-            int r = 1;
-            while (rs.next()) {
-                String u = rs.getString("username");
-                int sc = rs.getInt("score");
-                st.append(String.format("%d. %-15s : %d\n", r++, u, sc));
+            int rank = 1;
+            while (resultSet.next()) {
+                String username = resultSet.getString("username");
+                int scoreValue = resultSet.getInt("score");
+                highScoreText.append(String.format("%d. %-15s : %d\n", rank++, username, scoreValue));
             }
-            if (r == 1) {
-                 st.append("No scores recorded yet.\n");
+            if (rank == 1) {
+                highScoreText.append("No scores recorded yet.\n");
             }
         } catch (SQLException e) {
             System.err.println("Error fetching high scores: " + e.getMessage());
-            st.append("Error loading scores.\n");
+            highScoreText.append("Error loading scores.\n");
             e.printStackTrace();
         } catch (NullPointerException e) {
             System.err.println("Database connection is likely null. Cannot fetch scores.");
-            st.append("Database connection error.\n");
+            highScoreText.append("Database connection error.\n");
             e.printStackTrace();
         }
-        ta.setText(st.toString());
+        highScoreTextArea.setText(highScoreText.toString());
     }
 
-    private void init() {
-        px = W / 2 - pw / 2;
-        py = H - 50 - ph;
-        sc = 0;
-        lv = 3;
-        go = false;
-        p = false;
-        run = true;
+    private void initializeGame() {
+        playerX = GAME_WIDTH / 2 - playerWidth / 2;
+        playerY = GAME_HEIGHT - 50 - playerHeight;
+        score = 0;
+        lives = 3;
+        gameOver = false;
+        paused = false;
+        gameRunning = true;
 
-        bt = new ArrayList<>();
-        gt = new ArrayList<>();
-        b = new ArrayList<>();
+        enemyList = new ArrayList<>();
+        powerUpList = new ArrayList<>();
+        bulletList = new ArrayList<>();
 
         for (int i = 0; i < 5; i++) {
-            spawnBad();
+            spawnEnemy();
         }
-         for (int i = 0; i < 3; i++) {
-            spawnGood();
+        for (int i = 0; i < 3; i++) {
+            spawnPowerUp();
         }
 
-        remove(lp);
-        add(gp, BorderLayout.CENTER);
-        gp.setVisible(true);
+        remove(loginPanel);
+        add(gamePanel, BorderLayout.CENTER);
+        gamePanel.setVisible(true);
         revalidate();
         repaint();
 
-        gp.requestFocusInWindow();
+        gamePanel.requestFocusInWindow();
         requestFocus();
 
-        tm.start();
+        gameTimer.start();
     }
 
-    private void update() {
-        if (go || p || !run) {
+    private void updateGame() {
+        if (gameOver || paused || !gameRunning) {
             return;
         }
 
-        if (l) {
-            px -= s;
+        if (moveLeft) {
+            playerX -= playerSpeed;
         }
-        if (r) {
-            px += s;
+        if (moveRight) {
+            playerX += playerSpeed;
         }
-         if (u) {
-            py -= s;
+        if (moveUp) {
+            playerY -= playerSpeed;
         }
-        if (d) {
-            py += s;
-        }
-
-        if (px < 0) {
-            px = 0;
-        }
-        if (px > W - pw) {
-            px = W - pw;
-        }
-         if (py < 0) {
-            py = 0;
-        }
-        if (py > H - ph - 30) {
-            py = H - ph - 30;
+        if (moveDown) {
+            playerY += playerSpeed;
         }
 
-        if (f) {
-              int bw = 5;
-              int bh = 10;
-              int bs = 8;
-              int[] nb = {px + pw / 2 - bw / 2, py - bh, bw, bh, bs};
-              b.add(nb);
-              f = false;
+        if (playerX < 0) {
+            playerX = 0;
+        }
+        if (playerX > GAME_WIDTH - playerWidth) {
+            playerX = GAME_WIDTH - playerWidth;
+        }
+        if (playerY < 0) {
+            playerY = 0;
+        }
+        if (playerY > GAME_HEIGHT - playerHeight - 30) {
+            playerY = GAME_HEIGHT - playerHeight - 30;
         }
 
-        ArrayList<int[]> br = new ArrayList<>();
-        for (int i = 0; i < b.size(); i++) {
-            int[] b2 = b.get(i);
-            b2[1] -= b2[4];
-            if (b2[1] + b2[3] < 0) {
-                br.add(b2);
+        if (fireTriggered) {
+            int bulletWidth = 5;
+            int bulletHeight = 10;
+            int bulletSpeed = 8;
+            int[] newBullet = {playerX + playerWidth / 2 - bulletWidth / 2, playerY - bulletHeight, bulletWidth, bulletHeight, bulletSpeed};
+            bulletList.add(newBullet);
+            fireTriggered = false;
+        }
+
+        ArrayList<int[]> bulletsToRemove = new ArrayList<>();
+        for (int[] bullet : bulletList) {
+            bullet[1] -= bullet[4];
+            if (bullet[1] + bullet[3] < 0) {
+                bulletsToRemove.add(bullet);
             }
         }
-        b.removeAll(br);
+        bulletList.removeAll(bulletsToRemove);
 
-        ArrayList<int[]> btr = new ArrayList<>();
-        Rectangle pr = new Rectangle(px, py, pw, ph);
+        ArrayList<int[]> enemiesToRemove = new ArrayList<>();
+        Rectangle playerRect = new Rectangle(playerX, playerY, playerWidth, playerHeight);
 
-        for (int i = 0; i < bt.size(); i++) {
-            int[] th = bt.get(i);
-            th[1] += th[4];
+        for (int[] enemy : enemyList) {
+            enemy[1] += enemy[4];
 
-            Rectangle tr = new Rectangle(th[0], th[1], th[2], th[3]);
-            if (pr.intersects(tr)) {
-                lv--;
-                btr.add(th);
-                if (lv <= 0) {
-                    go = true;
-                    tm.stop();
-                     end();
+            Rectangle enemyRect = new Rectangle(enemy[0], enemy[1], enemy[2], enemy[3]);
+            if (playerRect.intersects(enemyRect)) {
+                lives--;
+                enemiesToRemove.add(enemy);
+                if (lives <= 0) {
+                    gameOver = true;
+                    gameTimer.stop();
+                    endGame();
                 }
                 continue;
             }
 
-              ArrayList<int[]> bh = new ArrayList<>();
-              boolean h = false;
-              for (int[] bl : b) {
-                  Rectangle br2 = new Rectangle(bl[0], bl[1], bl[2], bl[3]);
-                  if (br2.intersects(tr)) {
-                      btr.add(th);
-                      bh.add(bl);
-                      sc += 10;
-                      h = true;
-                      break;
-                  }
-              }
-              b.removeAll(bh);
+            ArrayList<int[]> collidedBullets = new ArrayList<>();
+            boolean bulletHit = false;
+            for (int[] bullet : bulletList) {
+                Rectangle bulletRect = new Rectangle(bullet[0], bullet[1], bullet[2], bullet[3]);
+                if (bulletRect.intersects(enemyRect)) {
+                    enemiesToRemove.add(enemy);
+                    collidedBullets.add(bullet);
+                    score += 10;
+                    bulletHit = true;
+                    break;
+                }
+            }
+            bulletList.removeAll(collidedBullets);
 
-            if (!h && th[1] > H) {
-                btr.add(th);
+            if (!bulletHit && enemy[1] > GAME_HEIGHT) {
+                enemiesToRemove.add(enemy);
             }
         }
-        bt.removeAll(btr);
+        enemyList.removeAll(enemiesToRemove);
 
-          ArrayList<int[]> gtr = new ArrayList<>();
-         for (int i = 0; i < gt.size(); i++) {
-             int[] th = gt.get(i);
-             th[1] += th[4];
+        ArrayList<int[]> powerUpsToRemove = new ArrayList<>();
+        for (int[] powerUp : powerUpList) {
+            powerUp[1] += powerUp[4];
 
-             Rectangle tr = new Rectangle(th[0], th[1], th[2], th[3]);
-             if (pr.intersects(tr)) {
-                 sc += 50;
-                 gtr.add(th);
-             } else if (th[1] > H) {
-                 gtr.add(th);
-             }
-         }
-         gt.removeAll(gtr);
-
-        if (rg.nextInt(100) < 5) {
-             if (bt.size() < 15) {
-                spawnBad();
-             }
+            Rectangle powerUpRect = new Rectangle(powerUp[0], powerUp[1], powerUp[2], powerUp[3]);
+            if (playerRect.intersects(powerUpRect)) {
+                score += 50;
+                powerUpsToRemove.add(powerUp);
+            } else if (powerUp[1] > GAME_HEIGHT) {
+                powerUpsToRemove.add(powerUp);
+            }
         }
-         if (rg.nextInt(100) < 2) {
-             if (gt.size() < 5) {
-                 spawnGood();
-             }
+        powerUpList.removeAll(powerUpsToRemove);
+
+        if (randomGenerator.nextInt(100) < 5) {
+            if (enemyList.size() < 15) {
+                spawnEnemy();
+            }
+        }
+        if (randomGenerator.nextInt(100) < 2) {
+            if (powerUpList.size() < 5) {
+                spawnPowerUp();
+            }
         }
     }
 
-     private void spawnBad() {
-         int w = 20 + rg.nextInt(30);
-         int h = w;
-         int x = rg.nextInt(W - w);
-         int y = -h;
-         int s = 2 + rg.nextInt(3);
-         bt.add(new int[]{x, y, w, h, s});
-     }
+    private void spawnEnemy() {
+        int size = 20 + randomGenerator.nextInt(30);
+        int enemyWidth = size;
+        int enemyHeight = size;
+        int enemyX = randomGenerator.nextInt(GAME_WIDTH - enemyWidth);
+        int enemyY = -enemyHeight;
+        int enemySpeed = 2 + randomGenerator.nextInt(3);
+        enemyList.add(new int[]{enemyX, enemyY, enemyWidth, enemyHeight, enemySpeed});
+    }
 
-     private void spawnGood() {
-         int w = 15;
-         int h = 15;
-         int x = rg.nextInt(W - w);
-         int y = -h;
-         int s = 3 + rg.nextInt(2);
-         gt.add(new int[]{x, y, w, h, s});
-     }
+    private void spawnPowerUp() {
+        int powerUpWidth = 15;
+        int powerUpHeight = 15;
+        int powerUpX = randomGenerator.nextInt(GAME_WIDTH - powerUpWidth);
+        int powerUpY = -powerUpHeight;
+        int powerUpSpeed = 3 + randomGenerator.nextInt(2);
+        powerUpList.add(new int[]{powerUpX, powerUpY, powerUpWidth, powerUpHeight, powerUpSpeed});
+    }
 
-      private void end() {
-        run = false;
-        System.out.println("Game Over! Final Score: " + sc);
-        if (usr != null) {
-             saveScore(usr, sc);
+    private void endGame() {
+        gameRunning = false;
+        System.out.println("Game Over! Final Score: " + score);
+        if (currentUsername != null) {
+            saveScore(currentUsername, score);
         } else {
             System.out.println("Score not saved - user not logged in.");
         }
-     }
+    }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        Object src = e.getSource();
+        Object source = e.getSource();
 
-        if (src == tm) {
-            update();
-            gp.repaint();
-        } else if (src == lb) {
-            String u = uf.getText();
-            String p = new String(pf.getPassword());
-            if (login(u, p)) {
-                sl.setText("Login Successful!");
-                usr = u;
-                init();
+        if (source == gameTimer) {
+            updateGame();
+            gamePanel.repaint();
+        } else if (source == loginButton) {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            if (loginUser(username, password)) {
+                statusLabel.setText("Login Successful!");
+                currentUsername = username;
+                initializeGame();
             } else {
-                pf.setText("");
+                passwordField.setText("");
             }
-        } else if (src == rb) {
-              String u = uf.getText();
-              String p = new String(pf.getPassword());
-              if (reg(u, p)) {
-                  uf.setText("");
-                  pf.setText("");
-              } else {
-                   pf.setText("");
-              }
+        } else if (source == registerButton) {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            if (registerUser(username, password)) {
+                usernameField.setText("");
+                passwordField.setText("");
+            } else {
+                passwordField.setText("");
+            }
         }
     }
 
     @Override
     public void keyTyped(KeyEvent e) {
+        // No implementation needed for keyTyped
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        int k = e.getKeyCode();
-        if (k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) {
-            l = true;
+        int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_A) {
+            moveLeft = true;
         }
-        if (k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) {
-            r = true;
+        if (keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_D) {
+            moveRight = true;
         }
-        if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
-            u = true;
+        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_W) {
+            moveUp = true;
         }
-        if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
-            d = true;
+        if (keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_S) {
+            moveDown = true;
         }
-         if (k == KeyEvent.VK_SPACE || k == KeyEvent.VK_CONTROL) {
-            if (run && !go && !p) {
-                 f = true;
+        if (keyCode == KeyEvent.VK_SPACE || keyCode == KeyEvent.VK_CONTROL) {
+            if (gameRunning && !gameOver && !paused) {
+                fireTriggered = true;
             }
         }
-        if (k == KeyEvent.VK_P) {
-             if (run && !go) {
-                 p = !p;
-                 if (p) {
-                     tm.stop();
-                 } else {
-                     tm.start();
-                 }
-                 gp.repaint();
-             }
-         }
-        if (k == KeyEvent.VK_ESCAPE) {
-             System.out.println("Escape pressed, exiting.");
-             try {
-                 if (db != null && !db.isClosed()) {
-                     db.close();
-                     System.out.println("Database connection closed.");
-                 }
-             } catch (SQLException ex) {
-                 ex.printStackTrace();
-             }
-             System.exit(0);
+        if (keyCode == KeyEvent.VK_P) {
+            if (gameRunning && !gameOver) {
+                paused = !paused;
+                if (paused) {
+                    gameTimer.stop();
+                } else {
+                    gameTimer.start();
+                }
+                gamePanel.repaint();
+            }
         }
-        if (go && k == KeyEvent.VK_R) {
-             System.out.println("Restart requested (Not implemented fully - requires relaunch or better state management)");
+        if (keyCode == KeyEvent.VK_ESCAPE) {
+            System.out.println("Escape pressed, exiting.");
+            try {
+                if (databaseConnection != null && !databaseConnection.isClosed()) {
+                    databaseConnection.close();
+                    System.out.println("Database connection closed.");
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            System.exit(0);
+        }
+        if (gameOver && keyCode == KeyEvent.VK_R) {
+            System.out.println("Restart requested (Not implemented fully - requires relaunch or better state management)");
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        int k = e.getKeyCode();
-        if (k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) {
-            l = false;
+        int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_A) {
+            moveLeft = false;
         }
-        if (k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) {
-            r = false;
+        if (keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_D) {
+            moveRight = false;
         }
-         if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
-            u = false;
+        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_W) {
+            moveUp = false;
         }
-        if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
-            d = false;
+        if (keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_S) {
+            moveDown = false;
         }
     }
 
@@ -560,111 +556,102 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
 
-            Graphics2D g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Graphics2D graphics2D = (Graphics2D) g;
+            graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            g2d.setColor(Color.BLACK);
-            g2d.fillRect(0, 0, W, H);
+            graphics2D.setColor(Color.BLACK);
+            graphics2D.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-            if (!run && !go) {
-                g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Arial", Font.BOLD, 20));
-                g2d.drawString("Waiting to start...", W/2 - 100, H/2);
+            if (!gameRunning && !gameOver) {
+                graphics2D.setColor(Color.WHITE);
+                graphics2D.setFont(new Font("Arial", Font.BOLD, 20));
+                graphics2D.drawString("Waiting to start...", GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2);
                 return;
             }
 
-            g2d.setColor(Color.CYAN);
-            g2d.fillRect(px, py, pw, ph);
+            graphics2D.setColor(Color.CYAN);
+            graphics2D.fillRect(playerX, playerY, playerWidth, playerHeight);
 
-            g2d.setColor(Color.YELLOW);
+            graphics2D.setColor(Color.YELLOW);
             try {
-                ArrayList<int[]> cb = new ArrayList<>(b);
-                for (int[] b : cb) {
-                    g2d.fillRect(b[0], b[1], b[2], b[3]);
+                ArrayList<int[]> bulletsCopy = new ArrayList<>(bulletList);
+                for (int[] bullet : bulletsCopy) {
+                    graphics2D.fillRect(bullet[0], bullet[1], bullet[2], bullet[3]);
                 }
             } catch (Exception e) { }
 
-            g2d.setColor(Color.RED);
-             try {
-                 ArrayList<int[]> cbt = new ArrayList<>(bt);
-                 for (int[] t : cbt) {
-                     g2d.fillRect(t[0], t[1], t[2], t[3]);
-                 }
-            } catch (Exception e) { }
-
-            g2d.setColor(Color.GREEN);
-             try {
-                 ArrayList<int[]> cgt = new ArrayList<>(gt);
-                for (int[] t : cgt) {
-                    g2d.fillOval(t[0], t[1], t[2], t[3]);
+            graphics2D.setColor(Color.RED);
+            try {
+                ArrayList<int[]> enemiesCopy = new ArrayList<>(enemyList);
+                for (int[] enemy : enemiesCopy) {
+                    graphics2D.fillRect(enemy[0], enemy[1], enemy[2], enemy[3]);
                 }
             } catch (Exception e) { }
 
-            g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Consolas", Font.BOLD, 16));
+            graphics2D.setColor(Color.GREEN);
+            try {
+                ArrayList<int[]> powerUpsCopy = new ArrayList<>(powerUpList);
+                for (int[] powerUp : powerUpsCopy) {
+                    graphics2D.fillOval(powerUp[0], powerUp[1], powerUp[2], powerUp[3]);
+                }
+            } catch (Exception e) { }
 
-            g2d.drawString("Score: " + sc, 10, 20);
+            graphics2D.setColor(Color.WHITE);
+            graphics2D.setFont(new Font("Consolas", Font.BOLD, 16));
+            graphics2D.drawString("Score: " + score, 10, 20);
+            graphics2D.drawString("Lives: " + lives, GAME_WIDTH - 100, 20);
 
-            g2d.drawString("Lives: " + lv, W - 100, 20);
+            if (gameOver) {
+                graphics2D.setColor(Color.YELLOW);
+                graphics2D.setFont(new Font("Arial", Font.BOLD, 48));
+                String gameOverMessage = "GAME OVER";
+                FontMetrics metrics = graphics2D.getFontMetrics();
+                int messageWidth = metrics.stringWidth(gameOverMessage);
+                graphics2D.drawString(gameOverMessage, (GAME_WIDTH - messageWidth) / 2, GAME_HEIGHT / 2 - 50);
 
-            if (go) {
-                g2d.setColor(Color.YELLOW);
-                g2d.setFont(new Font("Arial", Font.BOLD, 48));
-                String m = "GAME OVER";
-                FontMetrics fm = g2d.getFontMetrics();
-                int mw = fm.stringWidth(m);
-                g2d.drawString(m, (W - mw) / 2, H / 2 - 50);
+                graphics2D.setFont(new Font("Arial", Font.BOLD, 24));
+                String finalScoreMessage = "Final Score: " + score;
+                int scoreMessageWidth = graphics2D.getFontMetrics().stringWidth(finalScoreMessage);
+                graphics2D.drawString(finalScoreMessage, (GAME_WIDTH - scoreMessageWidth) / 2, GAME_HEIGHT / 2);
 
-                g2d.setFont(new Font("Arial", Font.BOLD, 24));
-                String sm = "Final Score: " + sc;
-                int sw = fm.stringWidth(sm);
-                fm = g2d.getFontMetrics();
-                sw = fm.stringWidth(sm);
-                g2d.drawString(sm, (W - sw) / 2, H / 2);
-
-                g2d.setFont(new Font("Arial", Font.PLAIN, 16));
-                String rm = "(Press ESC to exit)";
-                int rw = fm.stringWidth(rm);
-                 fm = g2d.getFontMetrics();
-                 rw = fm.stringWidth(rm);
-                g2d.drawString(rm, (W - rw) / 2, H / 2 + 50);
+                graphics2D.setFont(new Font("Arial", Font.PLAIN, 16));
+                String exitMessage = "(Press ESC to exit)";
+                int exitMessageWidth = graphics2D.getFontMetrics().stringWidth(exitMessage);
+                graphics2D.drawString(exitMessage, (GAME_WIDTH - exitMessageWidth) / 2, GAME_HEIGHT / 2 + 50);
             }
 
-             if (p && !go) {
-                 g2d.setColor(new Color(0, 0, 0, 150));
-                 g2d.fillRect(0, 0, W, H);
+            if (paused && !gameOver) {
+                graphics2D.setColor(new Color(0, 0, 0, 150));
+                graphics2D.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-                 g2d.setColor(Color.WHITE);
-                 g2d.setFont(new Font("Arial", Font.BOLD, 48));
-                 String m = "PAUSED";
-                 FontMetrics fm = g2d.getFontMetrics();
-                 int mw = fm.stringWidth(m);
-                 g2d.drawString(m, (W - mw) / 2, H / 2);
+                graphics2D.setColor(Color.WHITE);
+                graphics2D.setFont(new Font("Arial", Font.BOLD, 48));
+                String pauseMessage = "PAUSED";
+                FontMetrics metrics = graphics2D.getFontMetrics();
+                int pauseMessageWidth = metrics.stringWidth(pauseMessage);
+                graphics2D.drawString(pauseMessage, (GAME_WIDTH - pauseMessageWidth) / 2, GAME_HEIGHT / 2);
 
-                 g2d.setFont(new Font("Arial", Font.PLAIN, 16));
-                 String rm = "(Press 'P' to resume)";
-                 int rw = fm.stringWidth(rm);
-                 fm = g2d.getFontMetrics();
-                 rw = fm.stringWidth(rm);
-                 g2d.drawString(rm, (W - rw) / 2, H / 2 + 50);
-             }
+                graphics2D.setFont(new Font("Arial", Font.PLAIN, 16));
+                String resumeMessage = "(Press 'P' to resume)";
+                int resumeMessageWidth = graphics2D.getFontMetrics().stringWidth(resumeMessage);
+                graphics2D.drawString(resumeMessage, (GAME_WIDTH - resumeMessageWidth) / 2, GAME_HEIGHT / 2 + 50);
+            }
         }
     }
 
     public static void main(String[] args) {
-
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                TerribleGame tg = new TerribleGame();
+                TerribleGame terribleGame = new TerribleGame();
             }
         });
 
-          Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                if (db != null && !db.isClosed()) {
+                if (databaseConnection != null && !databaseConnection.isClosed()) {
                     System.out.println("Shutdown hook closing database connection.");
-                    db.close();
+                    databaseConnection.close();
                 }
             } catch (SQLException e) {
                 System.err.println("Error closing database connection during shutdown: " + e.getMessage());
