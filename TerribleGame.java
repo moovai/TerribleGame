@@ -9,109 +9,109 @@ import java.sql.*;
 
 public class TerribleGame extends JFrame implements KeyListener, ActionListener {
 
-    public static final int W_WIDTH = 800;
-    public static final int W_HEIGHT = 600;
-    private static String currentLoggedInUser = null;
-    private static Connection dbConn = null;
+    public static final int W = 800;
+    public static final int H = 600;
+    private static String usr = null;
+    private static Connection db = null;
     private static final String DB_URL = "jdbc:sqlite:terrible_game_data.db";
 
-    private GamePanel gamePanel;
-    private javax.swing.Timer gameTimer;
+    private GamePanel gp;
+    private javax.swing.Timer tm;
 
-    public int player_x_coord;
-    public int player_y_coord;
-    public int player_w = 30;
-    public int player_h = 15;
-    public int pSpeed = 5;
+    public int px;
+    public int py;
+    public int pw = 30;
+    public int ph = 15;
+    public int s = 5;
 
-    public ArrayList<int[]> badThings;
-    public ArrayList<int[]> goodThings;
-    public ArrayList<int[]> bullets;
+    public ArrayList<int[]> bt;
+    public ArrayList<int[]> gt;
+    public ArrayList<int[]> b;
 
-    public int score = 0;
-    public int lives = 3;
-    public boolean gameOver = false;
-    public boolean gamePaused = false;
-    public boolean gameRunning = false;
+    public int sc = 0;
+    public int lv = 3;
+    public boolean go = false;
+    public boolean p = false;
+    public boolean run = false;
 
-    private boolean keyLeft = false;
-    private boolean keyRight = false;
-    private boolean keyUp = false;
-    private boolean keyDown = false;
-    private boolean keyFire = false;
+    private boolean l = false;
+    private boolean r = false;
+    private boolean u = false;
+    private boolean d = false;
+    private boolean f = false;
 
-    private Random randomGenerator = new Random();
+    private Random rg = new Random();
 
-    private JTextField userField;
-    private JPasswordField passField;
-    private JButton loginButton;
-    private JButton registerButton;
-    private JLabel statusLabel;
-    private JPanel loginPanel;
+    private JTextField uf;
+    private JPasswordField pf;
+    private JButton lb;
+    private JButton rb;
+    private JLabel sl;
+    private JPanel lp;
 
     public TerribleGame() {
         super("The Terrible Space Game");
 
-        setupDatabaseConnection();
-        initializeDatabaseTables();
+        dbSetup();
+        dbInit();
 
-        setSize(W_WIDTH, W_HEIGHT);
+        setSize(W, H);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
 
-        loginPanel = new JPanel();
-        loginPanel.setLayout(null);
-        loginPanel.setBackground(Color.DARK_GRAY);
+        lp = new JPanel();
+        lp.setLayout(null);
+        lp.setBackground(Color.DARK_GRAY);
 
-        JLabel userLabel = new JLabel("Username:");
-        userLabel.setBounds(300, 150, 80, 25);
-        userLabel.setForeground(Color.WHITE);
-        loginPanel.add(userLabel);
+        JLabel ul = new JLabel("Username:");
+        ul.setBounds(300, 150, 80, 25);
+        ul.setForeground(Color.WHITE);
+        lp.add(ul);
 
-        userField = new JTextField();
-        userField.setBounds(400, 150, 160, 25);
-        loginPanel.add(userField);
+        uf = new JTextField();
+        uf.setBounds(400, 150, 160, 25);
+        lp.add(uf);
 
-        JLabel passLabel = new JLabel("Password:");
-        passLabel.setBounds(300, 190, 80, 25);
-        passLabel.setForeground(Color.WHITE);
-        loginPanel.add(passLabel);
+        JLabel pl = new JLabel("Password:");
+        pl.setBounds(300, 190, 80, 25);
+        pl.setForeground(Color.WHITE);
+        lp.add(pl);
 
-        passField = new JPasswordField();
-        passField.setBounds(400, 190, 160, 25);
-        loginPanel.add(passField);
+        pf = new JPasswordField();
+        pf.setBounds(400, 190, 160, 25);
+        lp.add(pf);
 
-        loginButton = new JButton("Login");
-        loginButton.setBounds(300, 230, 120, 30);
-        loginButton.addActionListener(this);
-        loginPanel.add(loginButton);
+        lb = new JButton("Login");
+        lb.setBounds(300, 230, 120, 30);
+        lb.addActionListener(this);
+        lp.add(lb);
 
-        registerButton = new JButton("Register");
-        registerButton.setBounds(440, 230, 120, 30);
-        registerButton.addActionListener(this);
-        loginPanel.add(registerButton);
+        rb = new JButton("Register");
+        rb.setBounds(440, 230, 120, 30);
+        rb.addActionListener(this);
+        lp.add(rb);
 
-        statusLabel = new JLabel("");
-        statusLabel.setBounds(300, 270, 260, 25);
-        statusLabel.setForeground(Color.RED);
-        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        loginPanel.add(statusLabel);
+        sl = new JLabel("");
+        sl.setBounds(300, 270, 260, 25);
+        sl.setForeground(Color.RED);
+        sl.setHorizontalAlignment(SwingConstants.CENTER);
+        lp.add(sl);
 
-        JTextArea highScoreArea = new JTextArea();
-        highScoreArea.setBounds(50, 350, W_WIDTH - 100, 200);
-        highScoreArea.setEditable(false);
-        highScoreArea.setForeground(Color.CYAN);
-        highScoreArea.setBackground(Color.BLACK);
-        highScoreArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        loginPanel.add(highScoreArea);
-        displayHighScores(highScoreArea);
+        JTextArea hs = new JTextArea();
+        hs.setBounds(50, 350, W - 100, 200);
+        hs.setEditable(false);
+        hs.setForeground(Color.CYAN);
+        hs.setBackground(Color.BLACK);
+        hs.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        lp.add(hs);
+        showHS(hs);
 
-        gamePanel = new GamePanel();
-        gamePanel.setPreferredSize(new Dimension(W_WIDTH, W_HEIGHT));
-        gamePanel.setBackground(Color.BLACK);
-        gamePanel.setVisible(false);
+        gp = new GamePanel();
+        gp.setPreferredSize(new Dimension(W, H));
+        gp.setBackground(Color.BLACK);
+        gp.setVisible(false);
 
-        add(loginPanel, BorderLayout.CENTER);
+        add(lp, BorderLayout.CENTER);
 
         addKeyListener(this);
         setFocusable(true);
@@ -120,14 +120,14 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         setLocationRelativeTo(null);
         setVisible(true);
 
-        gameTimer = new javax.swing.Timer(16, this);
+        tm = new javax.swing.Timer(16, this);
     }
 
-    private void setupDatabaseConnection() {
+    private void dbSetup() {
         try {
             Class.forName("org.sqlite.JDBC");
-            if (dbConn == null || dbConn.isClosed()) {
-                dbConn = DriverManager.getConnection(DB_URL);
+            if (db == null || db.isClosed()) {
+                db = DriverManager.getConnection(DB_URL);
                 System.out.println("Database connection established.");
             }
         } catch (ClassNotFoundException e) {
@@ -141,26 +141,26 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         }
     }
 
-    private void initializeDatabaseTables() {
-         if (dbConn == null) {
+    private void dbInit() {
+         if (db == null) {
              System.err.println("Cannot initialize DB tables, connection is null.");
              return;
          }
-        String createUserTableSql = "CREATE TABLE IF NOT EXISTS users (" +
+        String sql1 = "CREATE TABLE IF NOT EXISTS users (" +
                                     " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                                     " username TEXT UNIQUE NOT NULL," +
                                     " password TEXT NOT NULL" +
                                     ");";
-        String createScoresTableSql = "CREATE TABLE IF NOT EXISTS high_scores (" +
+        String sql2 = "CREATE TABLE IF NOT EXISTS high_scores (" +
                                       " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                                       " username TEXT NOT NULL," +
                                       " score INTEGER NOT NULL," +
                                       " timestamp DATETIME DEFAULT CURRENT_TIMESTAMP" +
                                       ");";
 
-        try (Statement stmt = dbConn.createStatement()) {
-            stmt.execute(createUserTableSql);
-            stmt.execute(createScoresTableSql);
+        try (Statement st = db.createStatement()) {
+            st.execute(sql1);
+            st.execute(sql2);
             System.out.println("Database tables checked/created.");
         } catch (SQLException e) {
             System.err.println("Error creating database tables: " + e.getMessage());
@@ -168,81 +168,81 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         }
     }
 
-    private boolean registerNewUser(String user, String pass) {
-        if (user == null || user.trim().isEmpty() || pass == null || pass.isEmpty()) {
-            statusLabel.setText("Username and password cannot be empty.");
+    private boolean reg(String u, String p) {
+        if (u == null || u.trim().isEmpty() || p == null || p.isEmpty()) {
+            sl.setText("Username and password cannot be empty.");
             return false;
         }
-        String sql = "INSERT INTO users (username, password) VALUES ('" + user + "', '" + pass + "')";
+        String sql = "INSERT INTO users (username, password) VALUES ('" + u + "', '" + p + "')";
 
-        try (Statement stmt = dbConn.createStatement()) {
-            String checkSql = "SELECT id FROM users WHERE username = '" + user + "'";
-            ResultSet rs = stmt.executeQuery(checkSql);
+        try (Statement st = db.createStatement()) {
+            String chk = "SELECT id FROM users WHERE username = '" + u + "'";
+            ResultSet rs = st.executeQuery(chk);
             if (rs.next()) {
-                statusLabel.setText("Username already exists.");
+                sl.setText("Username already exists.");
                 rs.close();
                 return false;
             }
             rs.close();
 
-            int result = stmt.executeUpdate(sql);
-            if (result > 0) {
-                statusLabel.setText("Registration successful!");
+            int r = st.executeUpdate(sql);
+            if (r > 0) {
+                sl.setText("Registration successful!");
                 return true;
             } else {
-                statusLabel.setText("Registration failed (database error).");
+                sl.setText("Registration failed (database error).");
                 return false;
             }
         } catch (SQLException e) {
             System.err.println("Registration error: " + e.getMessage());
-            statusLabel.setText("Registration failed: " + e.getMessage());
+            sl.setText("Registration failed: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
-    private boolean checkLogin(String user, String pass) {
-         if (user == null || user.trim().isEmpty() || pass == null || pass.isEmpty()) {
-            statusLabel.setText("Username and password cannot be empty.");
+    private boolean login(String u, String p) {
+         if (u == null || u.trim().isEmpty() || p == null || p.isEmpty()) {
+            sl.setText("Username and password cannot be empty.");
             return false;
         }
-        String sql = "SELECT password FROM users WHERE username = '" + user + "'";
+        String sql = "SELECT password FROM users WHERE username = '" + u + "'";
 
-        try (Statement stmt = dbConn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement st = db.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
 
             if (rs.next()) {
-                String storedPassword = rs.getString("password");
-                if (storedPassword.equals(pass)) {
+                String sp = rs.getString("password");
+                if (sp.equals(p)) {
                     return true;
                 } else {
-                    statusLabel.setText("Incorrect password.");
+                    sl.setText("Incorrect password.");
                     return false;
                 }
             } else {
-                statusLabel.setText("Username not found.");
+                sl.setText("Username not found.");
                 return false;
             }
         } catch (SQLException e) {
             System.err.println("Login error: " + e.getMessage());
-            statusLabel.setText("Login failed: " + e.getMessage());
+            sl.setText("Login failed: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
-    private void savePlayerScore(String username, int finalScore) {
-        if (username == null || finalScore <= 0) {
-             System.err.println("Invalid data for saving score (User: " + username + ", Score: " + finalScore + ")");
+    private void saveScore(String u, int s) {
+        if (u == null || s <= 0) {
+             System.err.println("Invalid data for saving score (User: " + u + ", Score: " + s + ")");
              return;
         }
         String sql = "INSERT INTO high_scores (username, score) VALUES (?, ?)";
 
-        try (PreparedStatement pstmt = dbConn.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-            pstmt.setInt(2, finalScore);
-            pstmt.executeUpdate();
-            System.out.println("Score " + finalScore + " for user " + username + " saved.");
+        try (PreparedStatement ps = db.prepareStatement(sql)) {
+            ps.setString(1, u);
+            ps.setInt(2, s);
+            ps.executeUpdate();
+            System.out.println("Score " + s + " for user " + u + " saved.");
         } catch (SQLException e) {
             System.err.println("Error saving score: " + e.getMessage());
             e.printStackTrace();
@@ -252,205 +252,205 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         }
     }
 
-     private void displayHighScores(JTextArea targetArea) {
+     private void showHS(JTextArea ta) {
         String sql = "SELECT username, score FROM high_scores ORDER BY score DESC LIMIT 10";
-        StringBuilder scoreText = new StringBuilder("--- High Scores ---\n");
+        StringBuilder st = new StringBuilder("--- High Scores ---\n");
 
-        try (Statement stmt = dbConn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (Statement s = db.createStatement();
+             ResultSet rs = s.executeQuery(sql)) {
 
-            int rank = 1;
+            int r = 1;
             while (rs.next()) {
-                String user = rs.getString("username");
-                int scr = rs.getInt("score");
-                scoreText.append(String.format("%d. %-15s : %d\n", rank++, user, scr));
+                String u = rs.getString("username");
+                int sc = rs.getInt("score");
+                st.append(String.format("%d. %-15s : %d\n", r++, u, sc));
             }
-            if (rank == 1) {
-                 scoreText.append("No scores recorded yet.\n");
+            if (r == 1) {
+                 st.append("No scores recorded yet.\n");
             }
         } catch (SQLException e) {
             System.err.println("Error fetching high scores: " + e.getMessage());
-            scoreText.append("Error loading scores.\n");
+            st.append("Error loading scores.\n");
             e.printStackTrace();
         } catch (NullPointerException e) {
             System.err.println("Database connection is likely null. Cannot fetch scores.");
-            scoreText.append("Database connection error.\n");
+            st.append("Database connection error.\n");
             e.printStackTrace();
         }
-        targetArea.setText(scoreText.toString());
+        ta.setText(st.toString());
     }
 
-    private void initializeGame() {
-        player_x_coord = W_WIDTH / 2 - player_w / 2;
-        player_y_coord = W_HEIGHT - 50 - player_h;
-        score = 0;
-        lives = 3;
-        gameOver = false;
-        gamePaused = false;
-        gameRunning = true;
+    private void init() {
+        px = W / 2 - pw / 2;
+        py = H - 50 - ph;
+        sc = 0;
+        lv = 3;
+        go = false;
+        p = false;
+        run = true;
 
-        badThings = new ArrayList<>();
-        goodThings = new ArrayList<>();
-        bullets = new ArrayList<>();
+        bt = new ArrayList<>();
+        gt = new ArrayList<>();
+        b = new ArrayList<>();
 
         for (int i = 0; i < 5; i++) {
-            spawnBadThing();
+            spawnBad();
         }
          for (int i = 0; i < 3; i++) {
-            spawnGoodThing();
+            spawnGood();
         }
 
-        remove(loginPanel);
-        add(gamePanel, BorderLayout.CENTER);
-        gamePanel.setVisible(true);
+        remove(lp);
+        add(gp, BorderLayout.CENTER);
+        gp.setVisible(true);
         revalidate();
         repaint();
 
-        gamePanel.requestFocusInWindow();
+        gp.requestFocusInWindow();
         requestFocus();
 
-        gameTimer.start();
+        tm.start();
     }
 
-    private void updateGameLogic() {
-        if (gameOver || gamePaused || !gameRunning) {
+    private void update() {
+        if (go || p || !run) {
             return;
         }
 
-        if (keyLeft) {
-            player_x_coord -= pSpeed;
+        if (l) {
+            px -= s;
         }
-        if (keyRight) {
-            player_x_coord += pSpeed;
+        if (r) {
+            px += s;
         }
-         if (keyUp) {
-            player_y_coord -= pSpeed;
+         if (u) {
+            py -= s;
         }
-        if (keyDown) {
-            player_y_coord += pSpeed;
-        }
-
-        if (player_x_coord < 0) {
-            player_x_coord = 0;
-        }
-        if (player_x_coord > W_WIDTH - player_w) {
-            player_x_coord = W_WIDTH - player_w;
-        }
-         if (player_y_coord < 0) {
-            player_y_coord = 0;
-        }
-        if (player_y_coord > W_HEIGHT - player_h - 30) {
-            player_y_coord = W_HEIGHT - player_h - 30;
+        if (d) {
+            py += s;
         }
 
-        if (keyFire) {
-              int bulletW = 5;
-              int bulletH = 10;
-              int bulletSpeed = 8;
-              int[] newBullet = {player_x_coord + player_w / 2 - bulletW / 2, player_y_coord - bulletH, bulletW, bulletH, bulletSpeed};
-              bullets.add(newBullet);
-              keyFire = false;
+        if (px < 0) {
+            px = 0;
+        }
+        if (px > W - pw) {
+            px = W - pw;
+        }
+         if (py < 0) {
+            py = 0;
+        }
+        if (py > H - ph - 30) {
+            py = H - ph - 30;
         }
 
-        ArrayList<int[]> bulletsToRemove = new ArrayList<>();
-        for (int i = 0; i < bullets.size(); i++) {
-            int[] b = bullets.get(i);
-            b[1] -= b[4];
-            if (b[1] + b[3] < 0) {
-                bulletsToRemove.add(b);
+        if (f) {
+              int bw = 5;
+              int bh = 10;
+              int bs = 8;
+              int[] nb = {px + pw / 2 - bw / 2, py - bh, bw, bh, bs};
+              b.add(nb);
+              f = false;
+        }
+
+        ArrayList<int[]> br = new ArrayList<>();
+        for (int i = 0; i < b.size(); i++) {
+            int[] b2 = b.get(i);
+            b2[1] -= b2[4];
+            if (b2[1] + b2[3] < 0) {
+                br.add(b2);
             }
         }
-        bullets.removeAll(bulletsToRemove);
+        b.removeAll(br);
 
-        ArrayList<int[]> badThingsToRemove = new ArrayList<>();
-        Rectangle playerRect = new Rectangle(player_x_coord, player_y_coord, player_w, player_h);
+        ArrayList<int[]> btr = new ArrayList<>();
+        Rectangle pr = new Rectangle(px, py, pw, ph);
 
-        for (int i = 0; i < badThings.size(); i++) {
-            int[] thing = badThings.get(i);
-            thing[1] += thing[4];
+        for (int i = 0; i < bt.size(); i++) {
+            int[] th = bt.get(i);
+            th[1] += th[4];
 
-            Rectangle thingRect = new Rectangle(thing[0], thing[1], thing[2], thing[3]);
-            if (playerRect.intersects(thingRect)) {
-                lives--;
-                badThingsToRemove.add(thing);
-                if (lives <= 0) {
-                    gameOver = true;
-                    gameTimer.stop();
-                     handleGameOver();
+            Rectangle tr = new Rectangle(th[0], th[1], th[2], th[3]);
+            if (pr.intersects(tr)) {
+                lv--;
+                btr.add(th);
+                if (lv <= 0) {
+                    go = true;
+                    tm.stop();
+                     end();
                 }
                 continue;
             }
 
-              ArrayList<int[]> bulletsHit = new ArrayList<>();
-              boolean thingHit = false;
-              for (int[] bullet : bullets) {
-                  Rectangle bulletRect = new Rectangle(bullet[0], bullet[1], bullet[2], bullet[3]);
-                  if (bulletRect.intersects(thingRect)) {
-                      badThingsToRemove.add(thing);
-                      bulletsHit.add(bullet);
-                      score += 10;
-                      thingHit = true;
+              ArrayList<int[]> bh = new ArrayList<>();
+              boolean h = false;
+              for (int[] bl : b) {
+                  Rectangle br2 = new Rectangle(bl[0], bl[1], bl[2], bl[3]);
+                  if (br2.intersects(tr)) {
+                      btr.add(th);
+                      bh.add(bl);
+                      sc += 10;
+                      h = true;
                       break;
                   }
               }
-              bullets.removeAll(bulletsHit);
+              b.removeAll(bh);
 
-            if (!thingHit && thing[1] > W_HEIGHT) {
-                badThingsToRemove.add(thing);
+            if (!h && th[1] > H) {
+                btr.add(th);
             }
         }
-        badThings.removeAll(badThingsToRemove);
+        bt.removeAll(btr);
 
-          ArrayList<int[]> goodThingsToRemove = new ArrayList<>();
-         for (int i = 0; i < goodThings.size(); i++) {
-             int[] thing = goodThings.get(i);
-             thing[1] += thing[4];
+          ArrayList<int[]> gtr = new ArrayList<>();
+         for (int i = 0; i < gt.size(); i++) {
+             int[] th = gt.get(i);
+             th[1] += th[4];
 
-             Rectangle thingRect = new Rectangle(thing[0], thing[1], thing[2], thing[3]);
-             if (playerRect.intersects(thingRect)) {
-                 score += 50;
-                 goodThingsToRemove.add(thing);
-             } else if (thing[1] > W_HEIGHT) {
-                 goodThingsToRemove.add(thing);
+             Rectangle tr = new Rectangle(th[0], th[1], th[2], th[3]);
+             if (pr.intersects(tr)) {
+                 sc += 50;
+                 gtr.add(th);
+             } else if (th[1] > H) {
+                 gtr.add(th);
              }
          }
-         goodThings.removeAll(goodThingsToRemove);
+         gt.removeAll(gtr);
 
-        if (randomGenerator.nextInt(100) < 5) {
-             if (badThings.size() < 15) {
-                spawnBadThing();
+        if (rg.nextInt(100) < 5) {
+             if (bt.size() < 15) {
+                spawnBad();
              }
         }
-         if (randomGenerator.nextInt(100) < 2) {
-             if (goodThings.size() < 5) {
-                 spawnGoodThing();
+         if (rg.nextInt(100) < 2) {
+             if (gt.size() < 5) {
+                 spawnGood();
              }
         }
     }
 
-     private void spawnBadThing() {
-         int width = 20 + randomGenerator.nextInt(30);
-         int height = width;
-         int x = randomGenerator.nextInt(W_WIDTH - width);
-         int y = -height;
-         int speed = 2 + randomGenerator.nextInt(3);
-         badThings.add(new int[]{x, y, width, height, speed});
+     private void spawnBad() {
+         int w = 20 + rg.nextInt(30);
+         int h = w;
+         int x = rg.nextInt(W - w);
+         int y = -h;
+         int s = 2 + rg.nextInt(3);
+         bt.add(new int[]{x, y, w, h, s});
      }
 
-     private void spawnGoodThing() {
-         int width = 15;
-         int height = 15;
-         int x = randomGenerator.nextInt(W_WIDTH - width);
-         int y = -height;
-         int speed = 3 + randomGenerator.nextInt(2);
-         goodThings.add(new int[]{x, y, width, height, speed});
+     private void spawnGood() {
+         int w = 15;
+         int h = 15;
+         int x = rg.nextInt(W - w);
+         int y = -h;
+         int s = 3 + rg.nextInt(2);
+         gt.add(new int[]{x, y, w, h, s});
      }
 
-      private void handleGameOver() {
-        gameRunning = false;
-        System.out.println("Game Over! Final Score: " + score);
-        if (currentLoggedInUser != null) {
-             savePlayerScore(currentLoggedInUser, score);
+      private void end() {
+        run = false;
+        System.out.println("Game Over! Final Score: " + sc);
+        if (usr != null) {
+             saveScore(usr, sc);
         } else {
             System.out.println("Score not saved - user not logged in.");
         }
@@ -460,27 +460,27 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
     public void actionPerformed(ActionEvent e) {
         Object src = e.getSource();
 
-        if (src == gameTimer) {
-            updateGameLogic();
-            gamePanel.repaint();
-        } else if (src == loginButton) {
-            String user = userField.getText();
-            String pass = new String(passField.getPassword());
-            if (checkLogin(user, pass)) {
-                statusLabel.setText("Login Successful!");
-                currentLoggedInUser = user;
-                initializeGame();
+        if (src == tm) {
+            update();
+            gp.repaint();
+        } else if (src == lb) {
+            String u = uf.getText();
+            String p = new String(pf.getPassword());
+            if (login(u, p)) {
+                sl.setText("Login Successful!");
+                usr = u;
+                init();
             } else {
-                passField.setText("");
+                pf.setText("");
             }
-        } else if (src == registerButton) {
-              String user = userField.getText();
-              String pass = new String(passField.getPassword());
-              if (registerNewUser(user, pass)) {
-                  userField.setText("");
-                  passField.setText("");
+        } else if (src == rb) {
+              String u = uf.getText();
+              String p = new String(pf.getPassword());
+              if (reg(u, p)) {
+                  uf.setText("");
+                  pf.setText("");
               } else {
-                   passField.setText("");
+                   pf.setText("");
               }
         }
     }
@@ -491,40 +491,40 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
 
     @Override
     public void keyPressed(KeyEvent e) {
-        int keyCode = e.getKeyCode();
-        if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_A) {
-            keyLeft = true;
+        int k = e.getKeyCode();
+        if (k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) {
+            l = true;
         }
-        if (keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_D) {
-            keyRight = true;
+        if (k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) {
+            r = true;
         }
-        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_W) {
-            keyUp = true;
+        if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
+            u = true;
         }
-        if (keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_S) {
-            keyDown = true;
+        if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
+            d = true;
         }
-         if (keyCode == KeyEvent.VK_SPACE || keyCode == KeyEvent.VK_CONTROL) {
-            if (gameRunning && !gameOver && !gamePaused) {
-                 keyFire = true;
+         if (k == KeyEvent.VK_SPACE || k == KeyEvent.VK_CONTROL) {
+            if (run && !go && !p) {
+                 f = true;
             }
         }
-        if (keyCode == KeyEvent.VK_P) {
-             if (gameRunning && !gameOver) {
-                 gamePaused = !gamePaused;
-                 if (gamePaused) {
-                     gameTimer.stop();
+        if (k == KeyEvent.VK_P) {
+             if (run && !go) {
+                 p = !p;
+                 if (p) {
+                     tm.stop();
                  } else {
-                     gameTimer.start();
+                     tm.start();
                  }
-                 gamePanel.repaint();
+                 gp.repaint();
              }
          }
-        if (keyCode == KeyEvent.VK_ESCAPE) {
+        if (k == KeyEvent.VK_ESCAPE) {
              System.out.println("Escape pressed, exiting.");
              try {
-                 if (dbConn != null && !dbConn.isClosed()) {
-                     dbConn.close();
+                 if (db != null && !db.isClosed()) {
+                     db.close();
                      System.out.println("Database connection closed.");
                  }
              } catch (SQLException ex) {
@@ -532,25 +532,25 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
              }
              System.exit(0);
         }
-        if (gameOver && keyCode == KeyEvent.VK_R) {
+        if (go && k == KeyEvent.VK_R) {
              System.out.println("Restart requested (Not implemented fully - requires relaunch or better state management)");
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        int keyCode = e.getKeyCode();
-        if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_A) {
-            keyLeft = false;
+        int k = e.getKeyCode();
+        if (k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) {
+            l = false;
         }
-        if (keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_D) {
-            keyRight = false;
+        if (k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) {
+            r = false;
         }
-         if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_W) {
-            keyUp = false;
+         if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
+            u = false;
         }
-        if (keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_S) {
-            keyDown = false;
+        if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
+            d = false;
         }
     }
 
@@ -564,89 +564,89 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             g2d.setColor(Color.BLACK);
-            g2d.fillRect(0, 0, W_WIDTH, W_HEIGHT);
+            g2d.fillRect(0, 0, W, H);
 
-            if (!gameRunning && !gameOver) {
+            if (!run && !go) {
                 g2d.setColor(Color.WHITE);
                 g2d.setFont(new Font("Arial", Font.BOLD, 20));
-                g2d.drawString("Waiting to start...", W_WIDTH/2 - 100, W_HEIGHT/2);
+                g2d.drawString("Waiting to start...", W/2 - 100, H/2);
                 return;
             }
 
             g2d.setColor(Color.CYAN);
-            g2d.fillRect(player_x_coord, player_y_coord, player_w, player_h);
+            g2d.fillRect(px, py, pw, ph);
 
             g2d.setColor(Color.YELLOW);
             try {
-                ArrayList<int[]> currentBullets = new ArrayList<>(bullets);
-                for (int[] b : currentBullets) {
+                ArrayList<int[]> cb = new ArrayList<>(b);
+                for (int[] b : cb) {
                     g2d.fillRect(b[0], b[1], b[2], b[3]);
                 }
             } catch (Exception e) { }
 
             g2d.setColor(Color.RED);
              try {
-                 ArrayList<int[]> currentBadThings = new ArrayList<>(badThings);
-                 for (int[] thing : currentBadThings) {
-                     g2d.fillRect(thing[0], thing[1], thing[2], thing[3]);
+                 ArrayList<int[]> cbt = new ArrayList<>(bt);
+                 for (int[] t : cbt) {
+                     g2d.fillRect(t[0], t[1], t[2], t[3]);
                  }
             } catch (Exception e) { }
 
             g2d.setColor(Color.GREEN);
              try {
-                 ArrayList<int[]> currentGoodThings = new ArrayList<>(goodThings);
-                for (int[] thing : currentGoodThings) {
-                    g2d.fillOval(thing[0], thing[1], thing[2], thing[3]);
+                 ArrayList<int[]> cgt = new ArrayList<>(gt);
+                for (int[] t : cgt) {
+                    g2d.fillOval(t[0], t[1], t[2], t[3]);
                 }
             } catch (Exception e) { }
 
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Consolas", Font.BOLD, 16));
 
-            g2d.drawString("Score: " + score, 10, 20);
+            g2d.drawString("Score: " + sc, 10, 20);
 
-            g2d.drawString("Lives: " + lives, W_WIDTH - 100, 20);
+            g2d.drawString("Lives: " + lv, W - 100, 20);
 
-            if (gameOver) {
+            if (go) {
                 g2d.setColor(Color.YELLOW);
                 g2d.setFont(new Font("Arial", Font.BOLD, 48));
-                String msg = "GAME OVER";
+                String m = "GAME OVER";
                 FontMetrics fm = g2d.getFontMetrics();
-                int msgWidth = fm.stringWidth(msg);
-                g2d.drawString(msg, (W_WIDTH - msgWidth) / 2, W_HEIGHT / 2 - 50);
+                int mw = fm.stringWidth(m);
+                g2d.drawString(m, (W - mw) / 2, H / 2 - 50);
 
                 g2d.setFont(new Font("Arial", Font.BOLD, 24));
-                String scoreMsg = "Final Score: " + score;
-                int scoreMsgWidth = fm.stringWidth(scoreMsg);
+                String sm = "Final Score: " + sc;
+                int sw = fm.stringWidth(sm);
                 fm = g2d.getFontMetrics();
-                scoreMsgWidth = fm.stringWidth(scoreMsg);
-                g2d.drawString(scoreMsg, (W_WIDTH - scoreMsgWidth) / 2, W_HEIGHT / 2);
+                sw = fm.stringWidth(sm);
+                g2d.drawString(sm, (W - sw) / 2, H / 2);
 
                 g2d.setFont(new Font("Arial", Font.PLAIN, 16));
-                String restartMsg = "(Press ESC to exit)";
-                int restartMsgWidth = fm.stringWidth(restartMsg);
+                String rm = "(Press ESC to exit)";
+                int rw = fm.stringWidth(rm);
                  fm = g2d.getFontMetrics();
-                 restartMsgWidth = fm.stringWidth(restartMsg);
-                g2d.drawString(restartMsg, (W_WIDTH - restartMsgWidth) / 2, W_HEIGHT / 2 + 50);
+                 rw = fm.stringWidth(rm);
+                g2d.drawString(rm, (W - rw) / 2, H / 2 + 50);
             }
 
-             if (gamePaused && !gameOver) {
+             if (p && !go) {
                  g2d.setColor(new Color(0, 0, 0, 150));
-                 g2d.fillRect(0, 0, W_WIDTH, W_HEIGHT);
+                 g2d.fillRect(0, 0, W, H);
 
                  g2d.setColor(Color.WHITE);
                  g2d.setFont(new Font("Arial", Font.BOLD, 48));
-                 String msg = "PAUSED";
+                 String m = "PAUSED";
                  FontMetrics fm = g2d.getFontMetrics();
-                 int msgWidth = fm.stringWidth(msg);
-                 g2d.drawString(msg, (W_WIDTH - msgWidth) / 2, W_HEIGHT / 2);
+                 int mw = fm.stringWidth(m);
+                 g2d.drawString(m, (W - mw) / 2, H / 2);
 
                  g2d.setFont(new Font("Arial", Font.PLAIN, 16));
-                 String resumeMsg = "(Press 'P' to resume)";
-                 int resumeMsgWidth = fm.stringWidth(resumeMsg);
+                 String rm = "(Press 'P' to resume)";
+                 int rw = fm.stringWidth(rm);
                  fm = g2d.getFontMetrics();
-                 resumeMsgWidth = fm.stringWidth(resumeMsg);
-                 g2d.drawString(resumeMsg, (W_WIDTH - resumeMsgWidth) / 2, W_HEIGHT / 2 + 50);
+                 rw = fm.stringWidth(rm);
+                 g2d.drawString(rm, (W - rw) / 2, H / 2 + 50);
              }
         }
     }
@@ -656,15 +656,15 @@ public class TerribleGame extends JFrame implements KeyListener, ActionListener 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                TerribleGame theGame = new TerribleGame();
+                TerribleGame tg = new TerribleGame();
             }
         });
 
           Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                if (dbConn != null && !dbConn.isClosed()) {
+                if (db != null && !db.isClosed()) {
                     System.out.println("Shutdown hook closing database connection.");
-                    dbConn.close();
+                    db.close();
                 }
             } catch (SQLException e) {
                 System.err.println("Error closing database connection during shutdown: " + e.getMessage());
