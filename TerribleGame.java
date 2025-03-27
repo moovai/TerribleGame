@@ -1,15 +1,3 @@
-// Single file structure for demonstration. In a real project, these would be separate files.
-
-// --- Dependency Notes ---
-// This code requires the 'java-dotenv' library.
-// Add it via Maven:
-// <dependency>
-//     <groupId>io.github.cdimascio</groupId>
-//     <artifactId>java-dotenv</artifactId>
-//     <version>5.2.2</version> <!-- Or the latest version -->
-// </dependency>
-// Or download the JAR and add it to your classpath.
-
 import io.github.cdimascio.dotenv.Dotenv;
 import io.github.cdimascio.dotenv.DotenvException;
 
@@ -24,17 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
 import java.util.Random;
+// import java.util.Collections; // Potentially needed for unmodifiable lists, but sticking to current pattern for now
 
 // --- Configuration Loading ---
+// Remains largely unchanged as it deals with loading immutable configuration values,
+// which is generally acceptable as static finals.
 class AppConfig {
     private static final Dotenv dotenv;
 
     static {
         Dotenv loadedDotenv = null;
         try {
-            // Load .env file from the project root (or classpath)
-            // ignoreIfMissing() prevents errors if .env doesn't exist
-            // systemProperties() allows overriding with system properties
             loadedDotenv = Dotenv.configure()
                                  .ignoreIfMissing()
                                  .systemProperties()
@@ -42,18 +30,15 @@ class AppConfig {
             System.out.println(".env file loaded successfully (or ignored if missing).");
         } catch (DotenvException e) {
             System.err.println("Could not load .env file: " + e.getMessage());
-            // Application can continue with default values
         }
-        dotenv = loadedDotenv; // Assign the loaded (or null) dotenv instance
+        dotenv = loadedDotenv;
     }
 
-    // Helper to load String environment variables with defaults
     private static String loadStringEnv(String varName, String defaultValue) {
         if (dotenv == null) return defaultValue;
         return dotenv.get(varName, defaultValue);
     }
 
-    // Helper to load Integer environment variables with defaults
     private static int loadIntEnv(String varName, int defaultValue) {
         if (dotenv == null) return defaultValue;
         try {
@@ -64,7 +49,6 @@ class AppConfig {
         }
     }
 
-    // Helper to load Double environment variables with defaults
     private static double loadDoubleEnv(String varName, double defaultValue) {
          if (dotenv == null) return defaultValue;
         try {
@@ -75,7 +59,6 @@ class AppConfig {
         }
     }
 
-    // Helper to load Color environment variables with defaults (supports hex #RRGGBB or #AARRGGBB)
     private static Color loadColorEnv(String varName, Color defaultValue) {
         if (dotenv == null) return defaultValue;
         String colorStr = dotenv.get(varName, "");
@@ -83,8 +66,6 @@ class AppConfig {
             return defaultValue;
         }
         try {
-            // Color.decode handles hex strings like "#RRGGBB" or "0xRRGGBB"
-            // It doesn't handle alpha directly in #AARRGGBB format well, so we parse manually if needed
             if (colorStr.startsWith("#")) {
                 if (colorStr.length() == 9) { // #AARRGGBB
                     long colorValue = Long.parseLong(colorStr.substring(1), 16);
@@ -99,7 +80,6 @@ class AppConfig {
                     throw new NumberFormatException("Invalid hex color format length.");
                 }
             } else {
-                // Try standard color names (case-insensitive) - less robust
                 try {
                     return (Color) Color.class.getField(colorStr.toUpperCase()).get(null);
                 } catch (Exception fieldEx) {
@@ -113,8 +93,7 @@ class AppConfig {
         }
     }
 
-     // Helper to load Font Style environment variables with defaults
-    private static int loadFontStyleEnv(String varName, int defaultValue) {
+     private static int loadFontStyleEnv(String varName, int defaultValue) {
         if (dotenv == null) return defaultValue;
         String styleStr = dotenv.get(varName, "").toUpperCase();
         switch (styleStr) {
@@ -128,16 +107,15 @@ class AppConfig {
         }
     }
 
-
     // --- Game Window & Timing ---
-    public static final String APP_TITLE = loadStringEnv("APP_TITLE", "The Less Terrible Space Game (Configured)");
+    public static final String APP_TITLE = loadStringEnv("APP_TITLE", "The Properly Encapsulated Space Game");
     public static final int GAME_WIDTH = loadIntEnv("GAME_WIDTH", 800);
     public static final int GAME_HEIGHT = loadIntEnv("GAME_HEIGHT", 600);
-    public static final int GAME_TICK_MS = loadIntEnv("GAME_TICK_MS", 16); // Approx 60 FPS default
-    public static final int BOTTOM_UI_BUFFER = loadIntEnv("BOTTOM_UI_BUFFER", 30); // Space at the bottom for UI/boundary
+    public static final int GAME_TICK_MS = loadIntEnv("GAME_TICK_MS", 16);
+    public static final int BOTTOM_UI_BUFFER = loadIntEnv("BOTTOM_UI_BUFFER", 30);
 
     // --- Database ---
-    public static final String DATABASE_URL = loadStringEnv("DATABASE_URL", "jdbc:sqlite:terrible_game_data.db");
+    public static final String DATABASE_URL = loadStringEnv("DATABASE_URL", "jdbc:sqlite:game_data.db"); // Renamed DB file
     public static final String JDBC_DRIVER = loadStringEnv("JDBC_DRIVER", "org.sqlite.JDBC");
     public static final int HIGH_SCORE_LIMIT = loadIntEnv("HIGH_SCORE_LIMIT", 10);
 
@@ -156,17 +134,17 @@ class AppConfig {
 
     // --- Enemy ---
     public static final int MAX_ENEMIES = loadIntEnv("MAX_ENEMIES", 15);
-    public static final double ENEMY_SPAWN_CHANCE = loadDoubleEnv("ENEMY_SPAWN_CHANCE", 0.05); // 5% per update tick
+    public static final double ENEMY_SPAWN_CHANCE = loadDoubleEnv("ENEMY_SPAWN_CHANCE", 0.05);
     public static final int ENEMY_BASE_SPEED = loadIntEnv("ENEMY_BASE_SPEED", 2);
-    public static final int ENEMY_SPEED_VARIATION = loadIntEnv("ENEMY_SPEED_VARIATION", 3); // Speed = BASE + random(0 to VARIATION-1)
+    public static final int ENEMY_SPEED_VARIATION = loadIntEnv("ENEMY_SPEED_VARIATION", 3);
     public static final int ENEMY_BASE_SIZE = loadIntEnv("ENEMY_BASE_SIZE", 20);
-    public static final int ENEMY_SIZE_VARIATION = loadIntEnv("ENEMY_SIZE_VARIATION", 30); // Size = BASE + random(0 to VARIATION-1)
+    public static final int ENEMY_SIZE_VARIATION = loadIntEnv("ENEMY_SIZE_VARIATION", 30);
     public static final int ENEMY_SCORE_VALUE = loadIntEnv("ENEMY_SCORE_VALUE", 10);
     public static final Color ENEMY_COLOR = loadColorEnv("ENEMY_COLOR", Color.RED);
 
     // --- PowerUp ---
     public static final int MAX_POWERUPS = loadIntEnv("MAX_POWERUPS", 5);
-    public static final double POWERUP_SPAWN_CHANCE = loadDoubleEnv("POWERUP_SPAWN_CHANCE", 0.02); // 2% per update tick
+    public static final double POWERUP_SPAWN_CHANCE = loadDoubleEnv("POWERUP_SPAWN_CHANCE", 0.02);
     public static final int POWERUP_WIDTH = loadIntEnv("POWERUP_WIDTH", 15);
     public static final int POWERUP_HEIGHT = loadIntEnv("POWERUP_HEIGHT", 15);
     public static final int POWERUP_BASE_SPEED = loadIntEnv("POWERUP_BASE_SPEED", 3);
@@ -201,7 +179,7 @@ class AppConfig {
     public static final int GAME_OVER_SMALL_FONT_STYLE = loadFontStyleEnv("GAME_OVER_SMALL_FONT_STYLE", Font.PLAIN);
     public static final int GAME_OVER_SMALL_FONT_SIZE = loadIntEnv("GAME_OVER_SMALL_FONT_SIZE", 16);
 
-    public static final Color PAUSE_OVERLAY_COLOR = loadColorEnv("PAUSE_OVERLAY_COLOR", new Color(0, 0, 0, 150)); // Default: Transparent black
+    public static final Color PAUSE_OVERLAY_COLOR = loadColorEnv("PAUSE_OVERLAY_COLOR", new Color(0, 0, 0, 150));
     public static final Color PAUSE_TEXT_COLOR = loadColorEnv("PAUSE_TEXT_COLOR", Color.WHITE);
     public static final String PAUSE_FONT_NAME = loadStringEnv("PAUSE_FONT_NAME", "Arial");
     public static final int PAUSE_LARGE_FONT_STYLE = loadFontStyleEnv("PAUSE_LARGE_FONT_STYLE", Font.BOLD);
@@ -215,15 +193,15 @@ class AppConfig {
 }
 
 
-// --- Core Data Models (Replacing int[]) ---
+// --- Core Data Models (Largely unchanged, already well-encapsulated) ---
 
 /**
  * Abstract base class for all objects appearing in the game world.
- * Encapsulates position, size, and provides a method for getting bounds.
  */
 abstract class GameObject {
+    // Protected allows subclasses direct access, could be private with getters/setters
     protected int x, y, width, height;
-    protected Rectangle bounds;
+    protected Rectangle bounds; // Using Rectangle for bounds checking
 
     public GameObject(int x, int y, int width, int height) {
         this.x = x;
@@ -233,29 +211,34 @@ abstract class GameObject {
         this.bounds = new Rectangle(x, y, width, height);
     }
 
+    // Public getters for read-only access from outside
     public int getX() { return x; }
     public int getY() { return y; }
     public int getWidth() { return width; }
     public int getHeight() { return height; }
 
-    // Update bounds based on current x, y
+    // Update bounds based on current x, y - should be called after position changes
     protected void updateBounds() {
         bounds.setLocation(x, y);
     }
 
+    // Get a copy or the direct reference for collision detection
     public Rectangle getBounds() {
-        return bounds;
+        // Return a copy if you want to prevent external modification of the internal bounds object
+        // return new Rectangle(bounds);
+        return bounds; // Return direct reference for performance, assuming callers are trusted
     }
 
-    // Abstract methods to be implemented by subclasses
+    // Abstract methods for behaviour
     public abstract void update(); // Update object state (e.g., position)
     public abstract void draw(Graphics2D g2d); // Draw the object
 
+    // Utility method for checking if object is off-screen
     public boolean isOutOfBounds(int screenHeight) {
-        // Check if fully below or fully above screen (using y coordinate only for top-down)
         return y > screenHeight || y + height < 0;
     }
 
+    // Utility method for collision detection
     public boolean intersects(GameObject other) {
         return this.bounds.intersects(other.getBounds());
     }
@@ -263,25 +246,30 @@ abstract class GameObject {
 
 /**
  * Represents the player's spaceship.
- * Encapsulates position, movement state, and drawing logic.
  */
 class Player extends GameObject {
     private int speed;
+    // Internal state for movement control
     private boolean movingLeft, movingRight, movingUp, movingDown;
-    private boolean wantsToShoot = false;
+    private boolean wantsToShoot = false; // State representing player input intention
 
     public Player(int startX, int startY) {
-        // Use configuration values for size and speed
         super(startX, startY, AppConfig.PLAYER_WIDTH, AppConfig.PLAYER_HEIGHT);
         this.speed = AppConfig.PLAYER_SPEED;
+        // Initialize movement flags to false
+        this.movingLeft = false;
+        this.movingRight = false;
+        this.movingUp = false;
+        this.movingDown = false;
     }
 
+    // Public setters to change movement state (called by InputHandler)
     public void setMovingLeft(boolean movingLeft) { this.movingLeft = movingLeft; }
     public void setMovingRight(boolean movingRight) { this.movingRight = movingRight; }
     public void setMovingUp(boolean movingUp) { this.movingUp = movingUp; }
     public void setMovingDown(boolean movingDown) { this.movingDown = movingDown; }
     public void setWantsToShoot(boolean wantsToShoot) { this.wantsToShoot = wantsToShoot; }
-    public boolean isWantsToShoot() { return wantsToShoot; }
+    public boolean isWantsToShoot() { return wantsToShoot; } // Getter for checking shoot intention
 
     @Override
     public void update() {
@@ -293,31 +281,43 @@ class Player extends GameObject {
         if (movingUp) dy -= speed;
         if (movingDown) dy += speed;
 
+        // Update position
         x += dx;
         y += dy;
 
-        // Apply boundary checks using configuration values
+        // Apply boundary checks using configuration
         x = Math.max(0, x);
         x = Math.min(AppConfig.GAME_WIDTH - width, x);
         y = Math.max(0, y);
         y = Math.min(AppConfig.GAME_HEIGHT - height - AppConfig.BOTTOM_UI_BUFFER, y);
 
-        updateBounds(); // Update bounds after moving
+        updateBounds(); // Update collision bounds after position change
     }
 
     @Override
     public void draw(Graphics2D g2d) {
-        g2d.setColor(AppConfig.PLAYER_COLOR); // Use configured color
+        g2d.setColor(AppConfig.PLAYER_COLOR);
         g2d.fillRect(x, y, width, height);
     }
 
-    // Player-specific action: create a bullet
+    // Player-specific action: create a bullet at the correct position
     public Bullet shoot() {
-         this.wantsToShoot = false; // Consume the trigger
-         // Use configuration values for bullet size offset
+         this.wantsToShoot = false; // Consume the trigger/intention
          int bulletX = this.x + this.width / 2 - AppConfig.BULLET_WIDTH / 2;
-         int bulletY = this.y - AppConfig.BULLET_HEIGHT;
+         int bulletY = this.y - AppConfig.BULLET_HEIGHT; // Position bullet above player
          return new Bullet(bulletX, bulletY);
+    }
+
+    // Method to reset player's position and state (used by GameState.reset)
+    public void resetPosition(int startX, int startY) {
+        this.x = startX;
+        this.y = startY;
+        this.movingLeft = false;
+        this.movingRight = false;
+        this.movingUp = false;
+        this.movingDown = false;
+        this.wantsToShoot = false;
+        updateBounds();
     }
 }
 
@@ -328,20 +328,19 @@ class Bullet extends GameObject {
     private int speed;
 
     public Bullet(int x, int y) {
-        // Use configuration values for size and speed
         super(x, y, AppConfig.BULLET_WIDTH, AppConfig.BULLET_HEIGHT);
         this.speed = AppConfig.BULLET_SPEED;
     }
 
     @Override
     public void update() {
-        y -= speed;
+        y -= speed; // Bullets move upwards
         updateBounds();
     }
 
     @Override
     public void draw(Graphics2D g2d) {
-        g2d.setColor(AppConfig.BULLET_COLOR); // Use configured color
+        g2d.setColor(AppConfig.BULLET_COLOR);
         g2d.fillRect(x, y, width, height);
     }
 }
@@ -359,13 +358,13 @@ class Enemy extends GameObject {
 
     @Override
     public void update() {
-        y += speed;
+        y += speed; // Enemies move downwards
         updateBounds();
     }
 
     @Override
     public void draw(Graphics2D g2d) {
-        g2d.setColor(AppConfig.ENEMY_COLOR); // Use configured color
+        g2d.setColor(AppConfig.ENEMY_COLOR);
         g2d.fillRect(x, y, width, height);
     }
 }
@@ -378,60 +377,62 @@ class PowerUp extends GameObject {
     // Could add 'type' field for different power-up effects
 
     public PowerUp(int x, int y, int speed) {
-        // Use configuration values for size
         super(x, y, AppConfig.POWERUP_WIDTH, AppConfig.POWERUP_HEIGHT);
         this.speed = speed;
     }
 
     @Override
     public void update() {
-        y += speed;
+        y += speed; // Power-ups move downwards
         updateBounds();
     }
 
     @Override
     public void draw(Graphics2D g2d) {
-        g2d.setColor(AppConfig.POWERUP_COLOR); // Use configured color
-        g2d.fillOval(x, y, width, height); // Draw as oval
+        g2d.setColor(AppConfig.POWERUP_COLOR);
+        g2d.fillOval(x, y, width, height); // Draw as an oval
     }
 
-    // Could have an applyEffect(Player player) method here
+    /**
+     * Applies the effect of this power-up.
+     * @param gameState The current game state to modify (e.g., increase score).
+     */
     public void applyEffect(GameState gameState) {
-        gameState.increaseScore(AppConfig.POWERUP_SCORE_VALUE); // Use configured score value
-        // Example: gameState.increaseLives(1);
-        // Example: player.increaseFireRate();
+        // Modifies the GameState directly through its public methods
+        gameState.increaseScore(AppConfig.POWERUP_SCORE_VALUE);
+        // Example effects (add methods to GameState if needed):
+        // gameState.increaseLives(1);
+        // gameState.getPlayer().increaseFireRate(); // Might modify player state directly or via GameState
     }
 }
 
-// --- Database Management (Instance-based) ---
-// Manages database connection and operations for users and scores.
+// --- Database Management (Instance-based, remains unchanged) ---
+// Encapsulates database operations.
 class DatabaseManager {
     private Connection databaseConnection = null;
     private final String dbUrl;
     private final String jdbcDriver;
 
     public DatabaseManager() {
-        this.dbUrl = AppConfig.DATABASE_URL; // Use configured URL
-        this.jdbcDriver = AppConfig.JDBC_DRIVER; // Use configured driver
-        getConnection(); // Try initial connection
+        this.dbUrl = AppConfig.DATABASE_URL;
+        this.jdbcDriver = AppConfig.JDBC_DRIVER;
+        getConnection();
         initializeDatabaseTables();
     }
 
     private Connection getConnection() {
         if (databaseConnection == null) {
             try {
-                Class.forName(jdbcDriver); // Use configured driver class name
+                Class.forName(jdbcDriver);
                 databaseConnection = DriverManager.getConnection(dbUrl);
                 System.out.println("Database connection established (" + dbUrl + ").");
             } catch (ClassNotFoundException e) {
                 handleError("JDBC Driver not found! Check classpath: " + jdbcDriver, e);
-                System.exit(1); // Critical failure
+                System.exit(1);
             } catch (SQLException e) {
                 handleError("Database connection failed (" + dbUrl + ")", e);
-                // Allow application to continue but DB features won't work
             }
         } else {
-            // Check if the existing connection is still valid
             try {
                 if (databaseConnection.isClosed() || !databaseConnection.isValid(2)) {
                     System.out.println("Database connection was closed or invalid, reopening...");
@@ -440,7 +441,7 @@ class DatabaseManager {
                 }
             } catch (SQLException e) {
                 handleError("Failed to check/reopen database connection", e);
-                databaseConnection = null; // Force re-establishment next time
+                databaseConnection = null;
             }
         }
         return databaseConnection;
@@ -455,7 +456,7 @@ class DatabaseManager {
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
                                     " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                                     " username TEXT UNIQUE NOT NULL," +
-                                    " password TEXT NOT NULL" + // Plain text - BAD for production!
+                                    " password TEXT NOT NULL" + // WARNING: Plain text password
                                     ");";
         String createHighScoresTable = "CREATE TABLE IF NOT EXISTS high_scores (" +
                                       " id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -473,7 +474,6 @@ class DatabaseManager {
         }
     }
 
-    // Use PreparedStatement for safety and clarity
     public boolean registerUser(String username, String password) {
         if (!isInputValid(username, password)) return false;
         Connection conn = getConnection();
@@ -488,9 +488,9 @@ class DatabaseManager {
             if (rs.next()) {
                 System.out.println("Registration failed: Username '" + username + "' already exists.");
                 rs.close();
-                return false; // Username exists
+                return false;
             }
-            rs.close();
+            rs.close(); // Close even if no results
         } catch (SQLException e) {
             handleError("Error checking username during registration", e);
             return false;
@@ -498,7 +498,7 @@ class DatabaseManager {
 
         try (PreparedStatement insertStmt = conn.prepareStatement(insertUserSql)) {
             insertStmt.setString(1, username);
-            insertStmt.setString(2, password); // HASH THIS PASSWORD in a real app
+            insertStmt.setString(2, password); // Store plain text (BAD PRACTICE!)
             int result = insertStmt.executeUpdate();
             if (result > 0) {
                  System.out.println("User '" + username + "' registered successfully.");
@@ -525,10 +525,10 @@ class DatabaseManager {
             if (rs.next()) {
                 String storedPassword = rs.getString("password");
                 rs.close();
-                // COMPARE HASHES in a real app
+                // Plain text comparison (BAD PRACTICE!)
                 return storedPassword.equals(password);
             } else {
-                rs.close();
+                rs.close(); // Close even if no results
                 return false; // Username not found
             }
         } catch (SQLException e) {
@@ -556,7 +556,7 @@ class DatabaseManager {
         }
     }
 
-    public List<String> getHighScores() { // Use configured limit internally
+    public List<String> getHighScores() {
         int limit = AppConfig.HIGH_SCORE_LIMIT;
         List<String> scores = new ArrayList<>();
         Connection conn = getConnection();
@@ -573,10 +573,9 @@ class DatabaseManager {
             while (rs.next()) {
                 String username = rs.getString("username");
                 int scoreValue = rs.getInt("score");
-                // Simple formatting, could be made more sophisticated
                 scores.add(String.format("%d. %-15s : %d", rank++, username, scoreValue));
             }
-            rs.close();
+            rs.close(); // Close result set
             if (rank == 1) {
                 scores.add("No scores recorded yet.");
             }
@@ -599,30 +598,27 @@ class DatabaseManager {
         }
     }
 
-    // Helper for input validation
     private boolean isInputValid(String username, String password) {
         return username != null && !username.trim().isEmpty() && password != null && !password.isEmpty();
     }
 
-    // Centralized error handling
     private void handleError(String message, Exception e) {
         System.err.println(message + ": " + e.getMessage());
-        // e.printStackTrace(); // Optionally print stack trace for debugging
+        // e.printStackTrace(); // Uncomment for debugging
     }
 }
 
-// --- User Session Management (Now managed by the main application) ---
-// The concept of a static UserSession is removed.
-// The main application (TerribleGame) will hold the current username.
-
-
-// --- Game State (Encapsulated) ---
-// Holds the current state of the game, including objects and status.
+// --- NEW: Game State Encapsulation ---
+/**
+ * Encapsulates the mutable state of the game world and player status.
+ * Provides controlled access and modification methods.
+ */
 class GameState {
+    // Private fields to hold the state
     private Player player;
-    private List<Enemy> enemies;
-    private List<PowerUp> powerUps;
-    private List<Bullet> bullets;
+    private final List<Enemy> enemies; // Use final for the list reference itself
+    private final List<PowerUp> powerUps;
+    private final List<Bullet> bullets;
     private int score;
     private int lives;
     private boolean isGameOver;
@@ -630,243 +626,347 @@ class GameState {
     private boolean isRunning; // Indicates if the game logic loop should run
 
     public GameState() {
-        // Initialize with default values, call reset() for actual game start setup
-        this.player = new Player(0, 0); // Temporary position, reset will fix
+        // Initialize player at a temporary spot, reset() will place correctly
+        this.player = new Player(0, 0);
+        // Initialize lists (use thread-safe lists like CopyOnWriteArrayList if concurrency expected)
         this.enemies = new ArrayList<>();
         this.powerUps = new ArrayList<>();
         this.bullets = new ArrayList<>();
+        // Initialize status variables
         this.score = 0;
-        this.lives = AppConfig.INITIAL_LIVES; // Use configured initial lives
+        this.lives = AppConfig.INITIAL_LIVES;
         this.isGameOver = false;
         this.isPaused = false;
-        this.isRunning = false; // Not running initially
+        this.isRunning = false; // Game doesn't start running automatically
     }
 
-    // Resets the game state for a new game
+    /**
+     * Resets the game state to its initial configuration for a new game.
+     */
     public void reset() {
-        // Use configured dimensions for initial player placement
-        player.x = AppConfig.GAME_WIDTH / 2 - AppConfig.PLAYER_WIDTH / 2;
-        player.y = AppConfig.GAME_HEIGHT - AppConfig.BOTTOM_UI_BUFFER - AppConfig.PLAYER_HEIGHT; // Place above buffer
-        player.updateBounds(); // Ensure bounds are correct after reset
+        // Reset player position using config values
+        player.resetPosition(
+            AppConfig.GAME_WIDTH / 2 - AppConfig.PLAYER_WIDTH / 2,
+            AppConfig.GAME_HEIGHT - AppConfig.BOTTOM_UI_BUFFER - AppConfig.PLAYER_HEIGHT - 10 // Start slightly higher
+        );
 
+        // Clear all dynamic game objects
         enemies.clear();
         powerUps.clear();
         bullets.clear();
 
+        // Reset score, lives, and status flags
         score = 0;
-        lives = AppConfig.INITIAL_LIVES; // Use configured initial lives
+        lives = AppConfig.INITIAL_LIVES;
         isGameOver = false;
         isPaused = false;
-        isRunning = false; // Set to true when game actually starts playing
-
-        // Reset player movement state
-        player.setMovingLeft(false);
-        player.setMovingRight(false);
-        player.setMovingUp(false);
-        player.setMovingDown(false);
-        player.setWantsToShoot(false);
+        isRunning = false; // Reset running state, controller will set it true when starting
     }
 
-    // Getters for accessing state (provide controlled access)
+    // --- Getters for Read Access ---
+
     public Player getPlayer() { return player; }
-    public List<Enemy> getEnemies() { return enemies; } // Consider returning immutable list or copy if needed
+
+    // Consider returning unmodifiable lists or copies if strict immutability is needed outside
+    // public List<Enemy> getEnemies() { return Collections.unmodifiableList(enemies); }
+    public List<Enemy> getEnemies() { return enemies; } // Direct access for now
     public List<PowerUp> getPowerUps() { return powerUps; }
     public List<Bullet> getBullets() { return bullets; }
+
     public int getScore() { return score; }
     public int getLives() { return lives; }
     public boolean isGameOver() { return isGameOver; }
     public boolean isPaused() { return isPaused; }
     public boolean isRunning() { return isRunning; }
 
-    // Setters/Modifiers for state changes
-    public void setGameOver(boolean gameOver) { isGameOver = gameOver; }
-    public void setPaused(boolean paused) { isPaused = paused; }
-    public void setRunning(boolean running) { isRunning = running; }
+    // --- Mutators for Controlled State Changes ---
 
+    public void setGameOver(boolean gameOver) {
+        this.isGameOver = gameOver;
+        if (gameOver) {
+            this.isRunning = false; // Game logic stops if game over
+        }
+    }
+
+    public void setPaused(boolean paused) {
+         // Only allow pausing if the game is running and not already over
+        if (this.isRunning && !this.isGameOver) {
+            this.isPaused = paused;
+        }
+    }
+
+    public void setRunning(boolean running) {
+        // Can only set running if not game over
+        if (!this.isGameOver) {
+            this.isRunning = running;
+            if (!running) {
+                this.isPaused = false; // If stopped, cannot be paused
+            }
+        } else {
+            this.isRunning = false; // Cannot run if game over
+        }
+    }
+
+    /** Decreases lives by one and sets game over if lives reach zero. */
     public void decreaseLives() {
         if (lives > 0) {
             lives--;
+            System.out.println("Life lost. Lives remaining: " + lives); // Debugging
         }
-        if (lives <= 0) {
-            isGameOver = true;
+        if (lives <= 0 && !isGameOver) { // Prevent multiple game over triggers
+            setGameOver(true); // Use the setter to ensure isRunning is also handled
+            System.out.println("Lives reached zero. Game Over triggered.");
         }
     }
 
+    /** Increases the score by the given amount. */
     public void increaseScore(int amount) {
-        score += amount;
+        if (amount > 0 && isRunning) { // Only score while running
+            score += amount;
+        }
     }
 
-    // Methods to manage game objects
-    public void addBullet(Bullet bullet) { bullets.add(bullet); }
-    public void addEnemy(Enemy enemy) { enemies.add(enemy); }
-    public void addPowerUp(PowerUp powerUp) { powerUps.add(powerUp); }
+    // --- Methods to Manage Game Object Collections ---
 
-    // Use Iterators for safe removal during updates
-    public void removeBullets(List<Bullet> bulletsToRemove) { bullets.removeAll(bulletsToRemove); }
-    public void removeEnemies(List<Enemy> enemiesToRemove) { enemies.removeAll(enemiesToRemove); }
-    public void removePowerUps(List<PowerUp> powerUpsToRemove) { powerUps.removeAll(powerUpsToRemove); }
+    public void addBullet(Bullet bullet) {
+        if (bullet != null) {
+            bullets.add(bullet);
+        }
+    }
+
+    public void addEnemy(Enemy enemy) {
+        if (enemy != null) {
+            enemies.add(enemy);
+        }
+    }
+
+    public void addPowerUp(PowerUp powerUp) {
+        if (powerUp != null) {
+            powerUps.add(powerUp);
+        }
+    }
+
+    // Use Iterators or provide methods for safe removal
+    // These methods allow bulk removal, often done after collision checks
+
+    public void removeBullets(List<Bullet> bulletsToRemove) {
+        if (bulletsToRemove != null) {
+            bullets.removeAll(bulletsToRemove);
+        }
+    }
+
+    public void removeEnemies(List<Enemy> enemiesToRemove) {
+        if (enemiesToRemove != null) {
+            enemies.removeAll(enemiesToRemove);
+        }
+    }
+
+    public void removePowerUps(List<PowerUp> powerUpsToRemove) {
+        if (powerUpsToRemove != null) {
+            powerUps.removeAll(powerUpsToRemove);
+        }
+    }
 }
 
 
 // --- Game Logic (Operates on GameState and GameObjects) ---
-// Contains the rules and updates for the game simulation.
+// Now depends on the GameState object passed to it.
 class GameLogic {
-    private Random randomGenerator = new Random();
-    private GameState gameState; // Holds the state this logic operates on
+    private final Random randomGenerator = new Random();
+    private final GameState gameState; // Holds the state this logic operates on
 
     public GameLogic(GameState state) {
+        if (state == null) {
+            throw new IllegalArgumentException("GameState cannot be null for GameLogic");
+        }
         this.gameState = state;
     }
 
-    // Called when a new game starts
+    /**
+     * Initializes the game state for a new game session.
+     * Calls GameState.reset() and potentially adds initial objects.
+     */
     public void initializeNewGame() {
-        gameState.reset(); // Reset state variables
-        // Initial population of game objects (can configure initial counts too if desired)
-        // For now, keep the hardcoded initial spawn counts
-        for (int i = 0; i < 5; i++) {
-            spawnEnemy();
-        }
-        for (int i = 0; i < 3; i++) {
-            spawnPowerUp();
-        }
-        gameState.setRunning(true); // Mark game as actively running
+        gameState.reset(); // Reset all state variables, player position, lists, etc.
+
+        // Optional: Spawn some initial objects (can be configured)
+        // Example: Spawn a few enemies to start
+        // for (int i = 0; i < 3; i++) {
+        //     spawnEnemy();
+        // }
+
+        // Mark the game as ready to run (controller will actually start the timer)
+        // gameState.setRunning(true); // Controller should manage this transition
+        System.out.println("Game logic initialized for a new game.");
     }
 
-    // Main update method called each game tick
+    /**
+     * Main update method called each game tick by the GameController.
+     * Updates all game objects, handles collisions, spawning, and checks game over conditions.
+     */
     public void update() {
-        // Only update if the game is running and not paused or over
+        // Logic should only run if the game state allows it
         if (!gameState.isRunning() || gameState.isPaused() || gameState.isGameOver()) {
-            return;
+            return; // Do nothing if not in active play state
         }
 
-        // Update player
+        // 1. Update player
         gameState.getPlayer().update();
-        handleShooting();
+        handleShooting(); // Check if player wants to shoot and add bullet to state
 
-        // Update bullets and remove OOB ones
+        // 2. Update bullets and remove Out-Of-Bounds (OOB)
         updateGameObjects(gameState.getBullets());
 
-        // Update enemies and remove OOB ones
+        // 3. Update enemies and remove OOB
         updateGameObjects(gameState.getEnemies());
 
-        // Update powerups and remove OOB ones
+        // 4. Update powerups and remove OOB
         updateGameObjects(gameState.getPowerUps());
 
-        // Handle collisions
+        // 5. Handle collisions between objects
         handleCollisions();
 
-        // Handle spawning new objects
+        // 6. Handle spawning new objects based on chance/limits
         handleSpawning();
 
-        // Check for game over condition (redundant if decreaseLives handles it, but safe)
-        if (gameState.getLives() <= 0) {
-            gameState.setGameOver(true);
-        }
+        // 7. Check game over condition (redundant if decreaseLives handles it, but safe)
+        // Note: decreaseLives now sets isGameOver directly in GameState
+        // if (gameState.getLives() <= 0 && !gameState.isGameOver()) {
+        //     gameState.setGameOver(true);
+        // }
     }
 
-    // Generic update and OOB removal for any GameObject list
+    /**
+     * Generic method to update a list of GameObjects and remove those out of bounds.
+     * Uses an Iterator for safe removal during iteration.
+     */
     private <T extends GameObject> void updateGameObjects(List<T> list) {
         Iterator<T> iterator = list.iterator();
         while (iterator.hasNext()) {
             T obj = iterator.next();
             obj.update();
-            if (obj.isOutOfBounds(AppConfig.GAME_HEIGHT)) { // Use configured height
-                iterator.remove();
+            // Use configured height for bounds check
+            if (obj.isOutOfBounds(AppConfig.GAME_HEIGHT)) {
+                iterator.remove(); // Safely remove using iterator
             }
         }
     }
 
+    /** Checks if the player intends to shoot and adds a bullet to the GameState. */
     private void handleShooting() {
         Player player = gameState.getPlayer();
         if (player.isWantsToShoot()) {
-            gameState.addBullet(player.shoot()); // Player creates and returns a new bullet
+            // Player object creates the bullet, GameState manages the list
+            gameState.addBullet(player.shoot());
         }
     }
 
+    /** Detects and resolves collisions between different game objects. */
     private void handleCollisions() {
         Player player = gameState.getPlayer();
+        // Create lists to collect objects that need removal after checking all collisions
         List<Bullet> bulletsToRemove = new ArrayList<>();
         List<Enemy> enemiesToRemove = new ArrayList<>();
         List<PowerUp> powerUpsToRemove = new ArrayList<>();
 
-        // 1. Player vs Enemy collisions
+        // --- 1. Player vs Enemy collisions ---
         for (Enemy enemy : gameState.getEnemies()) {
+            // Avoid re-colliding with an enemy already marked for removal in this frame
             if (!enemiesToRemove.contains(enemy) && player.intersects(enemy)) {
-                gameState.decreaseLives();
+                gameState.decreaseLives(); // Let GameState handle life reduction and game over check
                 enemiesToRemove.add(enemy);
-                if (gameState.isGameOver()) return; // Stop checking if game over
-            }
-        }
-
-        // 2. Bullet vs Enemy collisions
-        for (Bullet bullet : gameState.getBullets()) {
-             if (bulletsToRemove.contains(bullet)) continue; // Skip already marked bullets
-
-            for (Enemy enemy : gameState.getEnemies()) {
-                 if (enemiesToRemove.contains(enemy)) continue; // Skip already hit enemies
-
-                if (bullet.intersects(enemy)) {
-                    bulletsToRemove.add(bullet);
-                    enemiesToRemove.add(enemy);
-                    gameState.increaseScore(AppConfig.ENEMY_SCORE_VALUE); // Use configured score
-                    break; // One bullet hits one enemy
+                // Optimization: If game over is triggered, no need to check further collisions this frame
+                if (gameState.isGameOver()) {
+                    // Remove collected objects immediately before returning
+                    gameState.removeEnemies(enemiesToRemove);
+                    gameState.removeBullets(bulletsToRemove); // May be empty
+                    gameState.removePowerUps(powerUpsToRemove); // May be empty
+                    return;
                 }
             }
         }
 
-        // 3. Player vs PowerUp collisions
+        // --- 2. Bullet vs Enemy collisions ---
+        for (Bullet bullet : gameState.getBullets()) {
+            // Skip bullets already marked for removal (e.g., hit multiple enemies in one frame if allowed)
+             if (bulletsToRemove.contains(bullet)) continue;
+
+            for (Enemy enemy : gameState.getEnemies()) {
+                 // Skip enemies already marked for removal (e.g., hit by player or another bullet)
+                 if (enemiesToRemove.contains(enemy)) continue;
+
+                if (bullet.intersects(enemy)) {
+                    bulletsToRemove.add(bullet);
+                    enemiesToRemove.add(enemy);
+                    gameState.increaseScore(AppConfig.ENEMY_SCORE_VALUE); // Use GameState method
+                    break; // Crucial: prevent one bullet hitting multiple enemies
+                }
+            }
+        }
+
+        // --- 3. Player vs PowerUp collisions ---
         for (PowerUp powerUp : gameState.getPowerUps()) {
+             // Avoid re-collecting a powerup already marked for removal
              if (!powerUpsToRemove.contains(powerUp) && player.intersects(powerUp)) {
-                powerUp.applyEffect(gameState); // Apply the power-up effect (uses configured score internally)
+                powerUp.applyEffect(gameState); // PowerUp modifies GameState via its methods
                 powerUpsToRemove.add(powerUp);
             }
         }
 
-        // Remove collided objects from the game state
+        // --- Remove all collected objects from the GameState ---
+        // Perform removal outside the iteration loops
         gameState.removeEnemies(enemiesToRemove);
         gameState.removeBullets(bulletsToRemove);
         gameState.removePowerUps(powerUpsToRemove);
     }
 
+    /** Handles the spawning of new enemies and power-ups based on configured chances and limits. */
     private void handleSpawning() {
-        // Spawn enemies based on chance and count limit (using configured values)
-        if (gameState.getEnemies().size() < AppConfig.MAX_ENEMIES && randomGenerator.nextDouble() < AppConfig.ENEMY_SPAWN_CHANCE) {
+        // Spawn enemies
+        if (gameState.getEnemies().size() < AppConfig.MAX_ENEMIES &&
+            randomGenerator.nextDouble() < AppConfig.ENEMY_SPAWN_CHANCE) {
             spawnEnemy();
         }
-        // Spawn power-ups based on chance and count limit (using configured values)
-        if (gameState.getPowerUps().size() < AppConfig.MAX_POWERUPS && randomGenerator.nextDouble() < AppConfig.POWERUP_SPAWN_CHANCE) {
+        // Spawn power-ups
+        if (gameState.getPowerUps().size() < AppConfig.MAX_POWERUPS &&
+            randomGenerator.nextDouble() < AppConfig.POWERUP_SPAWN_CHANCE) {
             spawnPowerUp();
         }
     }
 
+    /** Creates a new enemy with random properties based on config and adds it to the GameState. */
     private void spawnEnemy() {
-        // Use configured base size and variation
         int size = AppConfig.ENEMY_BASE_SIZE + (AppConfig.ENEMY_SIZE_VARIATION > 0 ? randomGenerator.nextInt(AppConfig.ENEMY_SIZE_VARIATION) : 0);
-        int enemyX = randomGenerator.nextInt(AppConfig.GAME_WIDTH - size); // Use configured width
-        int enemyY = -size; // Start just above the screen
-        // Use configured base speed and variation
+        int enemyX = randomGenerator.nextInt(AppConfig.GAME_WIDTH - size);
+        int enemyY = -size; // Start just above screen
         int enemySpeed = AppConfig.ENEMY_BASE_SPEED + (AppConfig.ENEMY_SPEED_VARIATION > 0 ? randomGenerator.nextInt(AppConfig.ENEMY_SPEED_VARIATION) : 0);
-        gameState.addEnemy(new Enemy(enemyX, enemyY, size, size, enemySpeed));
+
+        Enemy newEnemy = new Enemy(enemyX, enemyY, size, size, enemySpeed);
+        gameState.addEnemy(newEnemy); // Add to state
     }
 
+    /** Creates a new power-up with random properties based on config and adds it to the GameState. */
     private void spawnPowerUp() {
-        // Use configured width and height
         int powerUpX = randomGenerator.nextInt(AppConfig.GAME_WIDTH - AppConfig.POWERUP_WIDTH);
-        int powerUpY = -AppConfig.POWERUP_HEIGHT; // Start just above the screen
-        // Use configured base speed and variation
+        int powerUpY = -AppConfig.POWERUP_HEIGHT; // Start just above screen
         int powerUpSpeed = AppConfig.POWERUP_BASE_SPEED + (AppConfig.POWERUP_SPEED_VARIATION > 0 ? randomGenerator.nextInt(AppConfig.POWERUP_SPEED_VARIATION) : 0);
-        gameState.addPowerUp(new PowerUp(powerUpX, powerUpY, powerUpSpeed));
+
+        PowerUp newPowerUp = new PowerUp(powerUpX, powerUpY, powerUpSpeed);
+        gameState.addPowerUp(newPowerUp); // Add to state
     }
 }
 
 
-// --- Input Handling (Interacts with Player and GameController) ---
-// Translates keyboard events into actions on the Player object or GameController.
-class InputHandler extends KeyAdapter { // Using KeyAdapter for conciseness
-    private GameState gameState;
-    private GameController gameController; // To handle pause/exit actions
+// --- Input Handling (Interacts with Player object within GameState and GameController) ---
+// Now receives GameState to access the player and check game status.
+class InputHandler extends KeyAdapter {
+    private final GameState gameState; // Reference to access player and game status
+    private final GameController gameController; // Reference for global actions (pause, exit, restart)
 
     public InputHandler(GameState state, GameController controller) {
+        if (state == null || controller == null) {
+            throw new IllegalArgumentException("GameState and GameController cannot be null for InputHandler");
+        }
         this.gameState = state;
         this.gameController = controller;
     }
@@ -874,29 +974,32 @@ class InputHandler extends KeyAdapter { // Using KeyAdapter for conciseness
     @Override
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
-        Player player = gameState.getPlayer();
 
-        // Handle global keys first, regardless of game state
+        // --- Global Keys (handled regardless of game state, but some actions depend on it) ---
         switch (keyCode) {
             case KeyEvent.VK_P: // Pause Key
-                if (gameState.isRunning() && !gameState.isGameOver()) {
-                    gameController.togglePause();
-                }
-                return;
+                // Controller handles the logic of whether pausing is allowed
+                gameController.togglePause();
+                return; // Consume event
             case KeyEvent.VK_ESCAPE: // Exit Key
                 gameController.exitGame();
-                return;
+                return; // Consume event
             case KeyEvent.VK_R: // Restart Key
+                // Only allow restart if game is actually over
                 if (gameState.isGameOver()) {
-                    System.out.println("Restart key (R) pressed - Triggering restart via controller.");
+                    System.out.println("Restart key (R) pressed - Requesting restart.");
                     gameController.requestRestart();
                 }
-                return;
+                return; // Consume event
         }
 
-        // Process game input if the game is running and not paused/over
+        // --- Game Input Keys (only process if game is running and not paused/over) ---
         if (gameState.isRunning() && !gameState.isPaused() && !gameState.isGameOver()) {
+             Player player = gameState.getPlayer(); // Get player from state
+             if (player == null) return; // Safety check
+
             switch (keyCode) {
+                // Movement keys
                 case KeyEvent.VK_LEFT:
                 case KeyEvent.VK_A:
                     player.setMovingLeft(true);
@@ -913,9 +1016,10 @@ class InputHandler extends KeyAdapter { // Using KeyAdapter for conciseness
                 case KeyEvent.VK_S:
                     player.setMovingDown(true);
                     break;
+                // Action keys
                 case KeyEvent.VK_SPACE:
-                case KeyEvent.VK_CONTROL:
-                    player.setWantsToShoot(true); // Signal intent to shoot
+                case KeyEvent.VK_CONTROL: // Allow Ctrl as alternative shoot key
+                    player.setWantsToShoot(true); // Signal intent, GameLogic will handle it
                     break;
             }
         }
@@ -924,9 +1028,10 @@ class InputHandler extends KeyAdapter { // Using KeyAdapter for conciseness
     @Override
     public void keyReleased(KeyEvent e) {
         int keyCode = e.getKeyCode();
-        Player player = gameState.getPlayer();
+        Player player = gameState.getPlayer(); // Get player from state
+        if (player == null) return; // Safety check
 
-        // Only process movement/shooting keys that need a 'released' state
+        // Reset movement flags on key release
         switch (keyCode) {
             case KeyEvent.VK_LEFT:
             case KeyEvent.VK_A:
@@ -944,11 +1049,9 @@ class InputHandler extends KeyAdapter { // Using KeyAdapter for conciseness
             case KeyEvent.VK_S:
                 player.setMovingDown(false);
                 break;
-             case KeyEvent.VK_SPACE:
-             case KeyEvent.VK_CONTROL:
-                // If shooting required holding, you'd set wantsToShoot = false here.
-                // Currently it's a trigger on press, consumed immediately.
-                break;
+            // No action needed on release for VK_SPACE/VK_CONTROL currently,
+            // as shooting is triggered on press and consumed by GameLogic.
+            // If charging was implemented, release would be handled here.
         }
     }
 }
@@ -957,8 +1060,8 @@ class InputHandler extends KeyAdapter { // Using KeyAdapter for conciseness
 // --- UI Panels ---
 
 /**
- * Login Screen Panel - Handles user login and registration UI.
- * Interacts with DatabaseManager and the main application frame.
+ * Login Screen Panel - Handles user login/registration UI.
+ * Interacts with DatabaseManager and the main application frame. (Largely unchanged logic)
  */
 class LoginScreen extends JPanel implements ActionListener {
     private JTextField usernameField;
@@ -967,30 +1070,31 @@ class LoginScreen extends JPanel implements ActionListener {
     private JButton registerButton;
     private JLabel statusLabel;
     private JTextArea highScoreTextArea;
-    private TerribleGame mainApp; // Reference to the main application
-    private DatabaseManager dbManager; // Instance of DatabaseManager
+    private final TerribleGame mainApp; // Reference to the main application for callbacks
+    private final DatabaseManager dbManager; // Instance of DatabaseManager
 
     public LoginScreen(TerribleGame mainApp, DatabaseManager dbManager) {
+        if (mainApp == null || dbManager == null) {
+            throw new IllegalArgumentException("MainApp and DatabaseManager cannot be null for LoginScreen");
+        }
         this.mainApp = mainApp;
         this.dbManager = dbManager;
         setupUI();
-        refreshHighScores(); // Initial load
+        // Don't refresh high scores here automatically, let mainApp call it when switching TO login
     }
 
     private void setupUI() {
-        setLayout(null); // Using null layout - consider alternatives for robustness
-        setBackground(AppConfig.LOGIN_BACKGROUND_COLOR); // Use configured color
+        setLayout(null); // Using absolute positioning
+        setBackground(AppConfig.LOGIN_BACKGROUND_COLOR);
         setPreferredSize(new Dimension(AppConfig.GAME_WIDTH, AppConfig.GAME_HEIGHT));
 
-        // --- Dynamic Layout (Example - adjust as needed if not using null layout) ---
-        // Instead of hardcoded numbers, calculate positions based on GAME_WIDTH/HEIGHT
         int centerX = AppConfig.GAME_WIDTH / 2;
         int fieldWidth = 160;
         int labelWidth = 80;
         int startY = 150;
         int fieldSpacing = 40;
         int buttonWidth = 120;
-        int buttonSpacing = 20; // Space between buttons
+        int buttonSpacing = 20;
 
         // Username
         JLabel usernameLabel = createLabel("Username:", centerX - fieldWidth / 2 - labelWidth, startY);
@@ -1006,7 +1110,7 @@ class LoginScreen extends JPanel implements ActionListener {
         add(passwordLabel);
         add(passwordField);
 
-        // Buttons (Centered below fields)
+        // Buttons
         int totalButtonWidth = buttonWidth * 2 + buttonSpacing;
         loginButton = createButton("Login", centerX - totalButtonWidth / 2, startY + 2 * fieldSpacing, buttonWidth, 30);
         registerButton = createButton("Register", centerX - totalButtonWidth / 2 + buttonWidth + buttonSpacing, startY + 2 * fieldSpacing, buttonWidth, 30);
@@ -1016,14 +1120,14 @@ class LoginScreen extends JPanel implements ActionListener {
         // Status Label
         statusLabel = new JLabel("", SwingConstants.CENTER);
         statusLabel.setBounds(centerX - (fieldWidth + labelWidth) / 2, startY + 3 * fieldSpacing, fieldWidth + labelWidth, 25);
-        statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR); // Default to error color
+        statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
         add(statusLabel);
 
         // High Scores Area
         int hsX = 50;
-        int hsY = startY + 4 * fieldSpacing + 20; // Position below status label
+        int hsY = startY + 4 * fieldSpacing + 20;
         int hsWidth = AppConfig.GAME_WIDTH - 2 * hsX;
-        int hsHeight = AppConfig.GAME_HEIGHT - hsY - 30; // Fill remaining space approx
+        int hsHeight = AppConfig.GAME_HEIGHT - hsY - 30;
 
         highScoreTextArea = new JTextArea();
         highScoreTextArea.setEditable(false);
@@ -1032,15 +1136,15 @@ class LoginScreen extends JPanel implements ActionListener {
         highScoreTextArea.setFont(new Font(AppConfig.LOGIN_HIGHSCORE_FONT_NAME,
                                            AppConfig.LOGIN_HIGHSCORE_FONT_STYLE,
                                            AppConfig.LOGIN_HIGHSCORE_FONT_SIZE));
-        JScrollPane scrollPane = new JScrollPane(highScoreTextArea); // Add scroll pane
+        JScrollPane scrollPane = new JScrollPane(highScoreTextArea);
         scrollPane.setBounds(hsX, hsY, hsWidth, hsHeight);
         add(scrollPane);
     }
 
     private JLabel createLabel(String text, int x, int y) {
         JLabel label = new JLabel(text);
-        label.setBounds(x, y, 80, 25); // Keep size fixed for now
-        label.setForeground(AppConfig.LOGIN_LABEL_COLOR); // Use configured color
+        label.setBounds(x, y, 80, 25);
+        label.setForeground(AppConfig.LOGIN_LABEL_COLOR);
         return label;
     }
 
@@ -1048,20 +1152,23 @@ class LoginScreen extends JPanel implements ActionListener {
         JButton button = new JButton(text);
         button.setBounds(x, y, w, h);
         button.addActionListener(this);
-        // Could configure button appearance here too
+        // Could configure button appearance further using AppConfig
         return button;
     }
 
+     /** Reloads and displays high scores from the database. */
      public void refreshHighScores() {
-        List<String> scores = dbManager.getHighScores(); // Uses configured limit internally
+        List<String> scores = dbManager.getHighScores();
         highScoreTextArea.setText("--- High Scores (Top " + AppConfig.HIGH_SCORE_LIMIT + ") ---\n");
-        for (String scoreLine : scores) {
-            highScoreTextArea.append(scoreLine + "\n");
+        if (scores != null) {
+            for (String scoreLine : scores) {
+                highScoreTextArea.append(scoreLine + "\n");
+            }
         }
         highScoreTextArea.setCaretPosition(0); // Scroll to top
      }
 
-     // Clear input fields and status
+     /** Clears input fields and the status message. */
      public void clearForm() {
          usernameField.setText("");
          passwordField.setText("");
@@ -1072,7 +1179,11 @@ class LoginScreen extends JPanel implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         String username = usernameField.getText().trim();
-        String password = new String(passwordField.getPassword());
+        // Securely handle password (char array is better than String)
+        char[] passwordChars = passwordField.getPassword();
+        String password = new String(passwordChars);
+        // Clear the password char array immediately after use
+        java.util.Arrays.fill(passwordChars, ' ');
 
         if (username.isEmpty() || password.isEmpty()) {
             statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
@@ -1084,39 +1195,38 @@ class LoginScreen extends JPanel implements ActionListener {
             if (dbManager.validateUser(username, password)) {
                 statusLabel.setForeground(AppConfig.LOGIN_STATUS_SUCCESS_COLOR);
                 statusLabel.setText("Login Successful!");
-                // Short delay before switching to show message (optional)
-                Timer timer = new Timer(500, ae -> mainApp.userLoggedIn(username));
-                timer.setRepeats(false);
-                timer.start();
-                // mainApp.userLoggedIn(username); // Notify main app of successful login
+                // Use Swing Timer for a slight delay before switching panel
+                Timer switchTimer = new Timer(500, ae -> mainApp.userLoggedIn(username));
+                switchTimer.setRepeats(false);
+                switchTimer.start();
             } else {
                 statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
-                statusLabel.setText("Login failed. Check username/password.");
-                passwordField.setText(""); // Clear password on failure
+                statusLabel.setText("Login failed. Check credentials.");
+                passwordField.setText(""); // Clear password field on failure
             }
         } else if (e.getSource() == registerButton) {
             if (dbManager.registerUser(username, password)) {
                 statusLabel.setForeground(AppConfig.LOGIN_STATUS_SUCCESS_COLOR);
-                statusLabel.setText("Registration successful! You can now log in.");
-                usernameField.setText(""); // Clear fields after success
+                statusLabel.setText("Registration successful! Please log in.");
+                usernameField.setText(""); // Clear fields after successful registration
                 passwordField.setText("");
-                refreshHighScores(); // Update high scores display
+                // Optionally refresh high scores immediately, though login screen refresh handles it too
+                // refreshHighScores();
             } else {
                 statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
-                // More specific error might be possible if registerUser returned different codes
                 statusLabel.setText("Registration failed (username might exist).");
-                passwordField.setText(""); // Clear password on failure
+                passwordField.setText(""); // Clear password field on failure
             }
         }
     }
 }
 
 /**
- * Game Screen Panel - Responsible for rendering the game state.
- * Reads data from GameState and uses Graphics2D for drawing.
+ * Game Screen Panel - Renders the game state provided by GameState.
+ * Reads data via GameState getters and uses Graphics2D for drawing.
  */
 class GamePanel extends JPanel {
-    private GameState gameState; // Reference to the state to render
+    private final GameState gameState; // Reference to the state to render
 
     // Pre-create Font objects based on config for efficiency
     private final Font uiFont = new Font(AppConfig.GAME_UI_FONT_NAME, AppConfig.GAME_UI_FONT_STYLE, AppConfig.GAME_UI_FONT_SIZE);
@@ -1128,397 +1238,505 @@ class GamePanel extends JPanel {
 
 
     public GamePanel(GameState state) {
+        if (state == null) {
+            throw new IllegalArgumentException("GameState cannot be null for GamePanel");
+        }
         this.gameState = state;
         setPreferredSize(new Dimension(AppConfig.GAME_WIDTH, AppConfig.GAME_HEIGHT));
-        setBackground(AppConfig.GAME_BACKGROUND_COLOR); // Use configured color
-        setDoubleBuffered(true); // Improve rendering performance
-        setFocusable(true);
+        setBackground(AppConfig.GAME_BACKGROUND_COLOR);
+        setDoubleBuffered(true); // Enable double buffering for smoother rendering
+        setFocusable(true);      // Panel needs focus to receive key events
         setRequestFocusEnabled(true);
-        setFocusTraversalKeysEnabled(false); // Allow capturing keys like Tab
+        // Prevent default focus traversal keys (like Tab) from interfering
+        setFocusTraversalKeysEnabled(false);
     }
 
     @Override
     protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+        super.paintComponent(g); // Clears the panel
         Graphics2D g2d = (Graphics2D) g;
-        // Anti-aliasing can be configured too if desired
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Draw Background
+        // Enable anti-aliasing for potentially smoother graphics
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        // Rendering quality hint (can affect performance)
+        // g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+        // Draw Background elements first
         drawBackground(g2d);
 
-        // Draw Game Objects only if the game is considered running or game over
+        // Draw Game Objects (Player, Enemies, Bullets, PowerUps)
+        // Only draw if game is considered active (running or game over state)
+        // Or potentially draw static elements even if not running (e.g., a title screen overlay)
+        // For simplicity, we draw if running OR game over to show final state.
+        // A more complex state machine could control this better.
         if (gameState.isRunning() || gameState.isGameOver()) {
             drawGameObjects(g2d);
-            drawUI(g2d); // Draw score, lives
         }
 
-        // Draw Overlays (Pause, Game Over)
+        // Draw UI elements (Score, Lives) - always drawn if game has started/ended
+        // Could be conditional based on gameState.isRunning() || gameState.isGameOver()
+        drawUI(g2d);
+
+        // Draw Overlays (Pause, Game Over) - drawn on top
         drawOverlays(g2d);
+
+        // Dispose graphics context if manually created (not needed here as it's provided by Swing)
+        // g2d.dispose();
+
+        // Toolkit.getDefaultToolkit().sync(); // Sometimes used to reduce tearing, often not needed
     }
 
     private void drawBackground(Graphics2D g2d) {
         g2d.setColor(AppConfig.GAME_BACKGROUND_COLOR);
         g2d.fillRect(0, 0, getWidth(), getHeight());
-        // Could add stars or other background elements here (potentially configurable?)
+        // TODO: Add more interesting background elements? (e.g., stars)
     }
 
     private void drawGameObjects(Graphics2D g2d) {
-        // Using iterators or defensive copies is good practice, especially if
-        // state could theoretically be modified concurrently (less likely with Swing Timer on EDT).
+        // Use try-catch for safety during rendering, though synchronization issues
+        // should ideally be handled elsewhere (e.g., using concurrent collections or EDT safety).
         try {
-            // Draw Player
-            if (gameState.getPlayer() != null) {
-                 gameState.getPlayer().draw(g2d);
+            // Draw Player (if exists and game not strictly 'before start')
+            Player player = gameState.getPlayer();
+            if (player != null) {
+                 player.draw(g2d);
             }
 
-            // Draw Bullets
-            // Create copy to avoid ConcurrentModificationException
-            List<Bullet> bulletsCopy = new ArrayList<>(gameState.getBullets());
-            for (Bullet bullet : bulletsCopy) {
+            // Draw Bullets - Iterate over a copy to avoid ConcurrentModificationException
+            // if the game logic modifies the list while rendering (less likely on EDT but safer)
+            List<Bullet> bulletsToDraw = new ArrayList<>(gameState.getBullets());
+            for (Bullet bullet : bulletsToDraw) {
                 bullet.draw(g2d);
             }
 
-            // Draw Enemies
-            List<Enemy> enemiesCopy = new ArrayList<>(gameState.getEnemies());
-            for (Enemy enemy : enemiesCopy) {
+            // Draw Enemies - Iterate over a copy
+            List<Enemy> enemiesToDraw = new ArrayList<>(gameState.getEnemies());
+            for (Enemy enemy : enemiesToDraw) {
                 enemy.draw(g2d);
             }
 
-            // Draw Power-ups
-            List<PowerUp> powerUpsCopy = new ArrayList<>(gameState.getPowerUps());
-            for (PowerUp powerUp : powerUpsCopy) {
+            // Draw Power-ups - Iterate over a copy
+            List<PowerUp> powerUpsToDraw = new ArrayList<>(gameState.getPowerUps());
+            for (PowerUp powerUp : powerUpsToDraw) {
                 powerUp.draw(g2d);
             }
         } catch (Exception e) {
-            // Catch potential exceptions during drawing iteration (e.g., null objects if state is inconsistent)
-            System.err.println("Error during drawing game objects: " + e.getMessage());
-            // e.printStackTrace();
+            // Log error if rendering fails for some reason
+            System.err.println("Error during rendering game objects: " + e.getMessage());
+            e.printStackTrace(); // For detailed debugging
         }
     }
 
     private void drawUI(Graphics2D g2d) {
         g2d.setColor(AppConfig.GAME_UI_TEXT_COLOR);
-        g2d.setFont(uiFont); // Use pre-created font
+        g2d.setFont(uiFont);
 
-        // Positions could also be configured or calculated based on screen size
+        // Use configured positions or calculate dynamically
         int uiMarginX = 10;
-        int uiMarginY = 20;
-        int livesRightMargin = 100;
+        int uiMarginYTop = 20; // Position from top
+        int livesRightMargin = 100; // Position from right edge
 
-        g2d.drawString("Score: " + gameState.getScore(), uiMarginX, uiMarginY);
-        g2d.drawString("Lives: " + gameState.getLives(), AppConfig.GAME_WIDTH - livesRightMargin, uiMarginY);
-        // Display current user? Might need access to mainApp or pass username
-        // String username = mainApp.getCurrentUsername(); // Requires access
-        // if (username != null) g2d.drawString("Player: " + username, AppConfig.GAME_WIDTH / 2 - 50, uiMarginY);
+        // Draw Score and Lives using data from GameState
+        g2d.drawString("Score: " + gameState.getScore(), uiMarginX, uiMarginYTop);
+        g2d.drawString("Lives: " + gameState.getLives(), AppConfig.GAME_WIDTH - livesRightMargin, uiMarginYTop);
+
+        // Optionally display current player username (would need access or be passed in)
+        // String username = mainApp.getCurrentUsername(); // If GamePanel had access to mainApp
+        // if (username != null) g2d.drawString("Player: " + username, AppConfig.GAME_WIDTH / 2 - 50, uiMarginYTop);
     }
 
     private void drawOverlays(Graphics2D g2d) {
-        int yOffsetLarge = -30; // Adjust vertical positioning of overlay text
+        // Vertical offsets for centered text lines
+        int yOffsetLarge = -40;
         int yOffsetMedium = 20;
         int yOffsetSmall = 60;
 
+        // Draw Game Over overlay if applicable
         if (gameState.isGameOver()) {
+            // Optional semi-transparent background for game over text
+            // g2d.setColor(new Color(0, 0, 0, 180));
+            // g2d.fillRect(0, 0, getWidth(), getHeight());
+
             drawCenteredString(g2d, "GAME OVER", gameOverLargeFont, AppConfig.GAME_OVER_TEXT_COLOR, yOffsetLarge);
             drawCenteredString(g2d, "Final Score: " + gameState.getScore(), gameOverMediumFont, AppConfig.GAME_OVER_TEXT_COLOR, yOffsetMedium);
-            drawCenteredString(g2d, "(Press R to Restart / ESC to Exit)", gameOverSmallFont, AppConfig.GAME_UI_TEXT_COLOR, yOffsetSmall);
+            drawCenteredString(g2d, "(R: Restart / ESC: Exit)", gameOverSmallFont, AppConfig.GAME_UI_TEXT_COLOR, yOffsetSmall);
+
+        // Draw Pause overlay if applicable (and not game over)
         } else if (gameState.isPaused()) {
-            // Semi-transparent overlay for pause
-            g2d.setColor(AppConfig.PAUSE_OVERLAY_COLOR); // Use configured color (with alpha)
+            // Draw semi-transparent overlay across the screen
+            g2d.setColor(AppConfig.PAUSE_OVERLAY_COLOR);
             g2d.fillRect(0, 0, getWidth(), getHeight());
 
+            // Draw pause text on top
             drawCenteredString(g2d, "PAUSED", pauseLargeFont, AppConfig.PAUSE_TEXT_COLOR, yOffsetLarge);
-            drawCenteredString(g2d, "(Press 'P' to resume)", pauseSmallFont, AppConfig.PAUSE_TEXT_COLOR, yOffsetSmall);
-        } else if (!gameState.isRunning() && !gameState.isGameOver()) {
-             // Optional: Message before game starts (e.g., if transitioning)
-             // drawCenteredString(g2d, "Get Ready!", someFont, someColor, 0);
+            drawCenteredString(g2d, "(Press 'P' to Resume)", pauseSmallFont, AppConfig.PAUSE_TEXT_COLOR, yOffsetSmall);
         }
+        // Could add other overlays for 'Get Ready', 'Level Complete', etc. based on GameState
     }
 
-    // Helper method for drawing centered text
+    /** Helper method to draw horizontally centered text at a specified vertical offset. */
     private void drawCenteredString(Graphics2D g2d, String text, Font font, Color color, int yOffset) {
         g2d.setFont(font);
         g2d.setColor(color);
         FontMetrics metrics = g2d.getFontMetrics(font);
-        // Use configured width/height for centering
+        // Center horizontally based on configured game width
         int x = (AppConfig.GAME_WIDTH - metrics.stringWidth(text)) / 2;
-        int y = (AppConfig.GAME_HEIGHT / 2) + metrics.getAscent() / 2 - metrics.getDescent() + yOffset; // Better vertical centering
+        // Center vertically based on configured game height, adjusting for font metrics and offset
+        int y = (AppConfig.GAME_HEIGHT / 2) - (metrics.getHeight() / 2) + metrics.getAscent() + yOffset;
         g2d.drawString(text, x, y);
     }
 }
 
 // --- Game Controller (Manages Game Loop, State Transitions, Interactions) ---
-// Orchestrates the game flow, timer, and interactions between logic, state, and UI.
+// Orchestrates the game flow using GameState, GameLogic, and UI interactions.
 class GameController implements ActionListener {
-    private GameState gameState;
-    private GameLogic gameLogic;
-    private GamePanel gamePanel;
-    private Timer gameTimer; // Use javax.swing.Timer for GUI updates
-    private DatabaseManager dbManager;
-    private TerribleGame mainApp; // Reference to main application for global actions (exit, switch view)
+    private final GameState gameState;
+    private final GameLogic gameLogic;
+    private final GamePanel gamePanel; // To trigger repaints
+    private final Timer gameTimer; // Swing Timer for EDT-safe updates
+    private final DatabaseManager dbManager;
+    private final TerribleGame mainApp; // Reference to main app for global actions
 
-    public GameController(GameState state, GameLogic logic, GamePanel panel, DatabaseManager dbManager, TerribleGame mainApp) {
+    public GameController(GameState state, GameLogic logic, GamePanel panel, DatabaseManager dbMgr, TerribleGame app) {
+        // Null checks for dependencies
+        if (state == null || logic == null || panel == null || dbMgr == null || app == null) {
+            throw new IllegalArgumentException("All dependencies must be non-null for GameController");
+        }
         this.gameState = state;
         this.gameLogic = logic;
         this.gamePanel = panel;
-        this.dbManager = dbManager;
-        this.mainApp = mainApp;
-        // Timer calls actionPerformed every configured tick milliseconds
+        this.dbManager = dbMgr;
+        this.mainApp = app;
+
+        // Initialize Swing Timer - calls actionPerformed on the EDT
         this.gameTimer = new Timer(AppConfig.GAME_TICK_MS, this);
+        this.gameTimer.setInitialDelay(0); // Start immediately when timer.start() is called
+        this.gameTimer.setCoalesce(true); // Combine multiple pending events if updates are slow
     }
 
+    /** Starts a new game session. */
     public void startGame() {
-        gameLogic.initializeNewGame(); // Sets up initial game state and objects
-        gameState.setRunning(true);    // Mark game as running
-        gameState.setPaused(false);    // Ensure not paused
-        gameState.setGameOver(false);  // Ensure not game over
-        gameTimer.start();
+        System.out.println("GameController: Starting game...");
+        gameLogic.initializeNewGame(); // Reset state and prepare logic
+        gameState.setRunning(true);    // Mark game as actively running
+        gameState.setPaused(false);    // Ensure not paused initially
+        // gameState.setGameOver(false); // reset() already handles this
+        gameTimer.start();             // Start the game loop timer
         System.out.println("Game Started. Timer running (" + AppConfig.GAME_TICK_MS + "ms interval).");
+        gamePanel.repaint(); // Initial paint
     }
 
-    // Stops the game loop but doesn't necessarily mean 'Game Over'
+    /** Stops the game loop timer and marks the game as not running. */
     public void stopGameLoop() {
         if (gameTimer.isRunning()) {
-            gameState.setRunning(false); // Mark as not actively running logic
             gameTimer.stop();
+            gameState.setRunning(false); // Mark state as not running
             System.out.println("Game Loop Stopped.");
         }
     }
 
+     /** Toggles the paused state of the game. */
      public void togglePause() {
-        if (!gameState.isRunning() || gameState.isGameOver()) return; // Can't pause if not running or already over
+        // Check if pausing/resuming is valid in the current state
+        if (!gameState.isRunning() || gameState.isGameOver()) {
+            System.out.println("Cannot toggle pause. Game running: " + gameState.isRunning() + ", Game over: " + gameState.isGameOver());
+            return; // Can't pause if not running or already over
+        }
 
-        gameState.setPaused(!gameState.isPaused()); // Toggle pause state
+        boolean currentPauseState = gameState.isPaused();
+        gameState.setPaused(!currentPauseState); // Delegate toggling to GameState
 
         if (gameState.isPaused()) {
-            gameTimer.stop(); // Stop updates
+            // gameTimer.stop(); // Stopping timer might be too abrupt, maybe just skip logic update?
+            // For simplicity, let timer run but logic won't execute due to isPaused check
             System.out.println("Game Paused");
         } else {
-            gameTimer.start(); // Resume timer and updates
+            // gameTimer.start(); // Only needed if timer was stopped
             System.out.println("Game Resumed");
         }
         gamePanel.repaint(); // Repaint immediately to show/hide pause overlay
     }
 
-    // Called when the game reaches a game over condition
+    /** Handles the sequence of events when the game reaches a 'Game Over' state. */
     private void handleGameOver() {
-        stopGameLoop(); // Stop the timer and updates
-        // gameState.setGameOver(true); // This should already be set by GameLogic/GameState
+        System.out.println("GameController: Handling Game Over...");
+        stopGameLoop(); // Stop updates
+
+        // GameState should already have isGameOver = true and isRunning = false
+        // gameState.setGameOver(true); // Already done by logic/state
+
         System.out.println("Game Over! Final Score: " + gameState.getScore());
 
         // Save score if a user is logged in
         String username = mainApp.getCurrentUsername();
-        if (username != null) {
+        if (username != null && gameState.getScore() > 0) { // Only save if score > 0?
+            System.out.println("Saving score for user: " + username);
             dbManager.saveScore(username, gameState.getScore());
         } else {
-            System.out.println("Score not saved - no user logged in.");
+            System.out.println("Score not saved (no user logged in or score is zero).");
         }
-        gamePanel.repaint(); // Ensure game over screen is drawn
+
+        gamePanel.repaint(); // Ensure game over screen is drawn immediately
     }
 
-    // Handles request to exit the application
+    /** Initiates the application shutdown process via the main application class. */
     public void exitGame() {
-        System.out.println("Exit requested via ESC or window close.");
-        stopGameLoop(); // Ensure game loop is stopped
-        mainApp.shutdown(); // Ask main application to close gracefully
+        System.out.println("GameController: Exit requested.");
+        stopGameLoop(); // Ensure game loop is stopped first
+        mainApp.shutdown(); // Tell main application to handle shutdown
     }
 
-    // Handles request to restart the game (typically back to login screen)
+    /** Handles the request to restart the game (usually goes back to login). */
     public void requestRestart() {
-        System.out.println("Restart requested via R key.");
+        System.out.println("GameController: Restart requested.");
         stopGameLoop();
-        // gameState.reset(); // Reset happens in initializeNewGame or when switching view
-        mainApp.switchToLoginScreen(); // Tell main app to go back to login
+        // Don't reset gameState here, happens when starting a new game
+        mainApp.switchToLoginScreen(); // Tell main app to switch view
     }
 
-    // Called by the Swing Timer
+    /**
+     * Called by the Swing Timer on the EDT. Executes one game tick.
+     * Updates logic, checks for game over, and requests a repaint.
+     */
     @Override
     public void actionPerformed(ActionEvent e) {
-        // Check if the game should be updating
-        if (gameState.isRunning() && !gameState.isPaused() && !gameState.isGameOver()) {
-            gameLogic.update(); // Update game state through logic
+        // Primary game loop executed on timer tick
 
-            // Check if the update resulted in game over
+        // Check if the game logic should update based on the current state
+        if (gameState.isRunning() && !gameState.isPaused() && !gameState.isGameOver()) {
+            // --- Update Game Logic ---
+            gameLogic.update();
+
+            // --- Check for State Changes (e.g., Game Over) ---
+            // The update() might have triggered a game over condition inside GameState
             if (gameState.isGameOver()) {
-                handleGameOver(); // Handle game over logic (stop timer, save score)
-                gamePanel.repaint(); // Ensure Game Over screen is drawn *after* handling
+                // If game over was set during the update, handle it now
+                handleGameOver();
+                // Repaint is implicitly called by handleGameOver's repaint call.
             } else {
-               gamePanel.repaint(); // Render the updated state normally
+                // --- Render Frame ---
+                // If game is still running normally, request repaint
+                gamePanel.repaint();
             }
+        } else if (gameState.isGameOver() || gameState.isPaused()) {
+            // If paused or game over, we still might want to repaint to show the overlay correctly
+            // (e.g., if something else invalidated the panel)
+            // Repainting here ensures the overlay stays visible even if the timer fires.
+            gamePanel.repaint();
         }
-        // No need for explicit checks for paused/game over here if the timer is managed correctly
-        // by togglePause() and handleGameOver(). Repainting happens naturally or is forced when needed.
+        // If !isRunning and not paused/game over (e.g., on login screen), do nothing.
     }
 }
 
 
 // --- Main Application Class (JFrame) ---
-// Sets up the window, manages panels (CardLayout), and orchestrates components.
+// Sets up the window, manages panels via CardLayout, and orchestrates components.
+// Holds the central instances of GameState, Controllers, etc.
 public class TerribleGame extends JFrame {
 
-    private GameState gameState;
-    private GameLogic gameLogic;
-    private GamePanel gamePanel;
-    private LoginScreen loginScreen;
-    private GameController gameController;
-    private InputHandler inputHandler;
-    private DatabaseManager dbManager;
+    // Core game components, instantiated here and passed to others
+    private final GameState gameState;
+    private final GameLogic gameLogic;
+    private final GameController gameController;
+    private final InputHandler inputHandler;
+    private final DatabaseManager dbManager;
 
+    // UI Panels
+    private final GamePanel gamePanel;
+    private final LoginScreen loginScreen;
+
+    // UI Management
     private CardLayout cardLayout;
-    private JPanel mainPanel;
+    private final JPanel mainPanel;
 
-    private String currentUsername = null; // Holds the logged-in username
-
-    // Using configured IDs
-    // private static final String LOGIN_PANEL_ID = AppConfig.LOGIN_PANEL_ID;
-    // private static final String GAME_PANEL_ID = AppConfig.GAME_PANEL_ID;
-    // Note: Direct static access might happen before AppConfig fully initializes if not careful.
-    // It's safer to access AppConfig fields after its static initializer has run.
+    // Session State (simple version)
+    private String currentUsername = null;
 
     public TerribleGame() {
-        super(AppConfig.APP_TITLE); // Use configured title
+        super(AppConfig.APP_TITLE); // Set window title from config
 
-        // Ensure AppConfig is loaded (happens automatically via static block)
-        System.out.println("Initializing game with Width=" + AppConfig.GAME_WIDTH + ", Height=" + AppConfig.GAME_HEIGHT);
+        // ---- Initialization Order ----
+        // 1. Non-UI components first
+        dbManager = new DatabaseManager();       // Manages database interactions
+        gameState = new GameState();           // Holds all runtime game state
+        gameLogic = new GameLogic(gameState);    // Contains game rules, operates on GameState
 
-        // 1. Initialize Core Components (non-UI first)
-        dbManager = new DatabaseManager(); // Uses configured DB settings internally
-        gameState = new GameState();       // Uses configured initial lives
-        gameLogic = new GameLogic(gameState); // Uses various configured game parameters
+        // 2. UI Panels (depend on GameState or DatabaseManager)
+        // Note: Pass 'this' (mainApp) for callbacks like userLoggedIn or switching panels
+        loginScreen = new LoginScreen(this, dbManager);
+        gamePanel = new GamePanel(gameState);      // Renders the GameState
 
-        // 2. Initialize UI Panels
-        loginScreen = new LoginScreen(this, dbManager); // Uses configured UI settings
-        gamePanel = new GamePanel(gameState);           // Uses configured UI/game settings
+        // 3. Controller and Input Handler (depend on state, logic, panels, mainApp)
+        gameController = new GameController(gameState, gameLogic, gamePanel, dbManager, this);
+        inputHandler = new InputHandler(gameState, gameController); // Translates key events
 
-        // 3. Initialize Controller and Input Handler (need UI refs)
-        gameController = new GameController(gameState, gameLogic, gamePanel, dbManager, this); // Uses configured tick rate
-        inputHandler = new InputHandler(gameState, gameController); // Listens for standard keys
-
-        // 4. Setup JFrame and CardLayout
+        // 4. Setup JFrame and Panel Management
         setupWindow();
-        setupCardLayout();
+        mainPanel = setupCardLayoutAndPanels(); // Create main container with CardLayout
+        add(mainPanel, BorderLayout.CENTER);   // Add container panel to the frame
 
-        // 5. Focus Management
-        setFocusable(false); // Frame should not capture focus intended for panels
-        setFocusTraversalKeysEnabled(false);
+        // 5. Add KeyListener AFTER panel is added and focusable
+        // KeyListener should be added to the component that needs to receive key events (GamePanel)
+        gamePanel.addKeyListener(inputHandler);
 
-        // 6. Finalize Window Setup
-        setLocationRelativeTo(null); // Center window
-        setVisible(true);
+        // 6. Finalize Window
+        pack(); // Adjust window size to preferred sizes of components (alternative to setSize)
+        // setSize(AppConfig.GAME_WIDTH, AppConfig.GAME_HEIGHT); // Or use fixed size from config
+        setLocationRelativeTo(null); // Center window on screen
+        setVisible(true);            // Make the window visible
 
-        // 7. Show Initial Screen (Login)
-        switchToLoginScreen(); // Use method to ensure consistency
+        // 7. Show the initial screen (Login Panel)
+        switchToLoginScreen();
     }
 
+    /** Configures the main JFrame window properties. */
     private void setupWindow() {
-        // Use configured dimensions
-        setSize(AppConfig.GAME_WIDTH, AppConfig.GAME_HEIGHT);
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Handle close manually via controller->shutdown
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Handle closing manually
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                System.out.println("Window closing event received.");
                 gameController.exitGame(); // Trigger clean shutdown via controller
             }
         });
-        setResizable(false); // Resizing not typically handled well in simple games
+        setResizable(false); // Prevent resizing which might break layout
+        // Frame should not steal focus from its panels
+        setFocusable(false);
     }
 
-    private void setupCardLayout() {
+    /** Creates the main JPanel with CardLayout and adds the login and game panels. */
+    private JPanel setupCardLayoutAndPanels() {
         cardLayout = new CardLayout();
-        mainPanel = new JPanel(cardLayout);
+        JPanel panel = new JPanel(cardLayout);
 
-        // Add panels using configured IDs
-        mainPanel.add(loginScreen, AppConfig.LOGIN_PANEL_ID);
-        mainPanel.add(gamePanel, AppConfig.GAME_PANEL_ID);
+        // Add panels with their designated IDs from AppConfig
+        panel.add(loginScreen, AppConfig.LOGIN_PANEL_ID);
+        panel.add(gamePanel, AppConfig.GAME_PANEL_ID);
 
-        // Add key listener ONLY to the component that needs it (GamePanel)
-        gamePanel.addKeyListener(inputHandler);
-
-        add(mainPanel, BorderLayout.CENTER);
+        return panel;
     }
 
     // --- View Switching Methods ---
 
+    /** Switches the view to the Game Panel and starts the game. */
     public void switchToGameScreen() {
-        cardLayout.show(mainPanel, AppConfig.GAME_PANEL_ID);
         System.out.println("Switching to Game Screen...");
+        cardLayout.show(mainPanel, AppConfig.GAME_PANEL_ID);
 
-        // Request focus AFTER the panel is shown
+        // Request focus for the game panel *after* it's made visible
+        // Use invokeLater to ensure it happens after the layout change is processed
         SwingUtilities.invokeLater(() -> {
             boolean focused = gamePanel.requestFocusInWindow();
-             if (!focused) {
+             if (focused) {
+                System.out.println("GamePanel focus requested successfully.");
+             } else {
                 System.err.println("Warning: GamePanel failed to gain focus.");
-                // Fallback: Try requesting focus directly on the frame content pane sometimes works
+                // As a fallback, sometimes focusing the content pane helps, but panel focus is preferred
                 // getContentPane().requestFocusInWindow();
-            } else {
-                 System.out.println("GamePanel focus requested successfully.");
              }
-             // Start the game logic AFTER focus is likely set
-             gameController.startGame(); // Start the game logic and timer
+             // Start the game logic AFTER switching view and attempting focus
+             gameController.startGame();
         });
     }
 
+     /** Switches the view to the Login Panel, stopping the game if running. */
      public void switchToLoginScreen() {
-         gameController.stopGameLoop(); // Make sure game loop is stopped
-         this.currentUsername = null; // Log out the user conceptually
-         loginScreen.clearForm(); // Clear username/password fields
-         loginScreen.refreshHighScores(); // Update high scores display
-         cardLayout.show(mainPanel, AppConfig.LOGIN_PANEL_ID);
          System.out.println("Switching to Login Screen...");
+         gameController.stopGameLoop(); // Ensure game stops before showing login
+         this.currentUsername = null;   // Clear current user session
+         loginScreen.clearForm();      // Clear login fields
+         loginScreen.refreshHighScores(); // Update high score display
+         cardLayout.show(mainPanel, AppConfig.LOGIN_PANEL_ID);
 
-         // Request focus AFTER the panel is shown
+         // Request focus for the login screen (specifically, maybe the username field)
          SwingUtilities.invokeLater(() -> {
-             boolean focused = loginScreen.requestFocusInWindow();
-             if (!focused) {
-                 System.err.println("Warning: LoginScreen failed to gain focus.");
-             } else {
-                 System.out.println("LoginScreen focus requested successfully.");
-             }
+             // loginScreen.requestFocusInWindow(); // Focus the panel itself
+             usernameFieldRequestFocus(loginScreen); // Try focusing the username field
          });
      }
 
+     // Helper to request focus on the username field within LoginScreen
+     private void usernameFieldRequestFocus(LoginScreen login) {
+         // Find the username field (this is a bit fragile, relies on knowing component order/type)
+         // A better way would be for LoginScreen to expose a method like requestUsernameFocus()
+         Component userField = null;
+         for (Component comp : login.getComponents()) {
+             if (comp instanceof JTextField) { // Assuming first JTextField is username
+                 userField = comp;
+                 break;
+             }
+         }
+         if (userField != null) {
+             boolean focused = userField.requestFocusInWindow();
+              if (focused) {
+                 System.out.println("Username field focus requested successfully.");
+             } else {
+                 System.err.println("Warning: Username field failed to gain focus.");
+                 // Fallback to panel focus if field focus fails
+                 login.requestFocusInWindow();
+             }
+         } else {
+             login.requestFocusInWindow(); // Fallback if field not found
+         }
+     }
+
+
     // --- User Management Callback ---
 
-    // Called by LoginScreen upon successful login
+    /** Called by LoginScreen upon successful user authentication. */
     public void userLoggedIn(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            System.err.println("Login attempt with invalid username.");
+            return;
+        }
         this.currentUsername = username;
-        System.out.println("User '" + username + "' logged in.");
-        switchToGameScreen(); // Proceed to the game
+        System.out.println("User '" + username + "' logged in. Proceeding to game.");
+        switchToGameScreen(); // Switch to the game panel
     }
 
+    /** Returns the username of the currently logged-in user, or null if none. */
     public String getCurrentUsername() {
         return currentUsername;
     }
 
     // --- Application Lifecycle ---
 
-    // Graceful shutdown procedure triggered by controller or window closing
+    /** Handles graceful shutdown of the application. */
     public void shutdown() {
-        System.out.println("Shutting down application...");
-        // Controller already stops the game loop
-        // gameController.stopGameLoop(); // Ensure game loop is off (redundant if called from exitGame)
-        dbManager.closeConnection(); // Close database connection
+        System.out.println("MainApp: Initiating shutdown...");
+        // 1. Stop game loop (should already be done if called from controller.exitGame)
+        gameController.stopGameLoop();
+        // 2. Close database connection
+        dbManager.closeConnection();
+        // 3. Dispose of the main window resources
+        dispose();
         System.out.println("Shutdown complete. Exiting JVM.");
-        dispose(); // Close the JFrame window
-        System.exit(0); // Terminate the application
+        // 4. Terminate the Java Virtual Machine
+        System.exit(0);
     }
 
     // --- Main Entry Point ---
     public static void main(String[] args) {
-        // AppConfig loads automatically here when the class is first accessed
-        // which happens when TerribleGame constructor runs or AppConfig constants are used.
+        // Ensure AppConfig is loaded (happens automatically on first access)
+        System.out.println("Application starting with title: " + AppConfig.APP_TITLE);
 
-        // Ensure Swing components are created on the Event Dispatch Thread (EDT)
+        // Best practice: Create and show Swing GUI components on the Event Dispatch Thread (EDT)
         SwingUtilities.invokeLater(() -> {
-            new TerribleGame(); // Create and show the main game window
+            // Create the main application window instance
+            TerribleGame game = new TerribleGame();
 
-            // Optional: Add JVM shutdown hook for cleanup on unexpected termination
-            // Note: Actions within shutdown hooks have limitations
+            // Optional: Add a JVM shutdown hook for cleanup on abnormal termination.
+            // Note: This hook is not guaranteed to run in all circumstances (e.g., kill -9).
+            // Actions within the hook should be minimal and fast.
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("JVM Shutdown Hook triggered.");
-                // Avoid complex operations here. The windowClosing listener is preferred.
-                // Potentially force DB close if needed, but DatabaseManager instance is gone.
-            }));
+                System.out.println("JVM Shutdown Hook executing...");
+                // Avoid complex operations. Database closing etc. should ideally
+                // happen via the normal window closing/exit process.
+                // If game instance is available, could try a last-ditch cleanup.
+                // if (game != null && game.dbManager != null) {
+                //    game.dbManager.closeConnection(); // Risky if already closed
+                // }
+            }, "ShutdownCleanupThread"));
         });
     }
 }
