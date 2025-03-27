@@ -1,5 +1,3 @@
-// RefactoredGame.java - A refactored game for educational purposes
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -594,9 +592,9 @@ class LoginScreen extends JPanel implements ActionListener {
     private JButton registerButton;
     private JLabel statusLabel;
     private JTextArea highScoreTextArea;
-    private RefactoredGame mainApp; // Reference to the main application to switch views
+    private TerribleGame mainApp; // Reference to the main application to switch views
 
-    public LoginScreen(RefactoredGame mainApp) {
+    public LoginScreen(TerribleGame mainApp) {
         this.mainApp = mainApp;
         setLayout(null);
         setBackground(Color.DARK_GRAY);
@@ -859,7 +857,7 @@ class GameController implements ActionListener {
 
 
 // --- Main Application Class ---
-public class RefactoredGame extends JFrame {
+public class TerribleGame extends JFrame {
 
     private GameState gameState;
     private GameLogic gameLogic;
@@ -874,7 +872,7 @@ public class RefactoredGame extends JFrame {
     private static final String GAME_PANEL = "GamePanel";
 
 
-    public RefactoredGame() {
+    public TerribleGame() {
         super("The Less Terrible Space Game");
 
         // Initialize core components
@@ -938,7 +936,7 @@ public class RefactoredGame extends JFrame {
     public static void main(String[] args) {
         // Ensure Swing components are created on the Event Dispatch Thread (EDT)
         SwingUtilities.invokeLater(() -> {
-            new RefactoredGame();
+            new TerribleGame();
         });
 
         // Add shutdown hook to close database connection gracefully
