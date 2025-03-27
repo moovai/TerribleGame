@@ -14,6 +14,8 @@ import java.util.Iterator;
 import java.util.Random;
 // import java.util.Collections; // Potentially needed for unmodifiable lists, but sticking to current pattern for now
 
+import org.mindrot.jbcrypt.BCrypt; // Import for password hashing
+
 // --- Configuration Loading ---
 // Remains largely unchanged as it deals with loading immutable configuration values,
 // which is generally acceptable as static finals.
@@ -109,16 +111,17 @@ class AppConfig {
     }
 
     // --- Game Window & Timing ---
-    public static final String APP_TITLE = loadStringEnv("APP_TITLE", "The Properly Encapsulated Space Game");
+    public static final String APP_TITLE = loadStringEnv("APP_TITLE", "Secure Space Game"); // Updated title
     public static final int GAME_WIDTH = loadIntEnv("GAME_WIDTH", 800);
     public static final int GAME_HEIGHT = loadIntEnv("GAME_HEIGHT", 600);
     public static final int GAME_TICK_MS = loadIntEnv("GAME_TICK_MS", 16);
     public static final int BOTTOM_UI_BUFFER = loadIntEnv("BOTTOM_UI_BUFFER", 30);
 
     // --- Database ---
-    public static final String DATABASE_URL = loadStringEnv("DATABASE_URL", "jdbc:sqlite:game_data.db"); // Renamed DB file
+    public static final String DATABASE_URL = loadStringEnv("DATABASE_URL", "jdbc:sqlite:secure_game_data.db"); // Renamed DB file
     public static final String JDBC_DRIVER = loadStringEnv("JDBC_DRIVER", "org.sqlite.JDBC");
     public static final int HIGH_SCORE_LIMIT = loadIntEnv("HIGH_SCORE_LIMIT", 10);
+    public static final int BCRYPT_LOG_ROUNDS = loadIntEnv("BCRYPT_LOG_ROUNDS", 12); // Configurable BCrypt work factor
 
     // --- Player ---
     public static final int PLAYER_WIDTH = loadIntEnv("PLAYER_WIDTH", 30);
@@ -382,10 +385,9 @@ class PowerUp extends GameObject {
     }
 }
 
-// --- Database Management (IMPROVED Connection Handling) ---
-// Encapsulates database operations with improved resource management.
+// --- Database Management (REFACTORED FOR SECURITY) ---
+// Encapsulates database operations with parameterized queries and password hashing.
 class DatabaseManager {
-    // Removed: private Connection databaseConnection = null;
     private final String dbUrl;
     private final String jdbcDriver;
 
@@ -395,43 +397,37 @@ class DatabaseManager {
             Class.forName(AppConfig.JDBC_DRIVER);
             System.out.println("JDBC Driver loaded: " + AppConfig.JDBC_DRIVER);
         } catch (ClassNotFoundException e) {
-            // This is usually fatal, log and exit or throw a RuntimeException
             System.err.println("FATAL: JDBC Driver not found! Check classpath: " + AppConfig.JDBC_DRIVER);
-            // Option 1: Throw an exception to prevent application start
             throw new RuntimeException("Failed to load JDBC Driver", e);
-            // Option 2: Exit directly (less ideal)
-            // System.exit(1);
         }
     }
 
     public DatabaseManager() {
         this.dbUrl = AppConfig.DATABASE_URL;
-        this.jdbcDriver = AppConfig.JDBC_DRIVER; // Keep for reference, though loaded statically
-        initializeDatabaseTables(); // Ensure tables exist on startup
+        this.jdbcDriver = AppConfig.JDBC_DRIVER;
+        initializeDatabaseTables();
     }
 
     /**
      * Establishes and returns a NEW database connection.
      * The caller is responsible for closing this connection (typically via try-with-resources).
-     *
      * @return A new Connection object.
      * @throws SQLException if a database access error occurs.
      */
     private Connection getConnection() throws SQLException {
-        // Removed: Check for existing connection, validity checks.
-        // Always create a new connection for each request.
         return DriverManager.getConnection(dbUrl);
     }
 
     /**
      * Initializes the necessary database tables if they don't exist.
-     * Uses try-with-resources for the connection and statement.
+     * The `password` column now stores a hash, not plaintext.
      */
     private void initializeDatabaseTables() {
+        // SECURITY: Password column now stores a hash (TEXT is suitable for BCrypt hashes)
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users (" +
                                     " id INTEGER PRIMARY KEY AUTOINCREMENT," +
                                     " username TEXT UNIQUE NOT NULL," +
-                                    " password TEXT NOT NULL" + // WARNING: Plain text password
+                                    " password_hash TEXT NOT NULL" + // Changed column name
                                     ");";
         String createHighScoresTable = "CREATE TABLE IF NOT EXISTS high_scores (" +
                                       " id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -446,96 +442,115 @@ class DatabaseManager {
 
             statement.execute(createUsersTable);
             statement.execute(createHighScoresTable);
-            System.out.println("Database tables checked/created successfully.");
+            System.out.println("Database tables checked/created successfully (Password stored as hash).");
 
         } catch (SQLException e) {
-            // This is potentially critical on startup. Log prominently.
             handleError("CRITICAL: Error initializing database tables. Application might not function correctly.", e);
-            // Depending on requirements, you might want to re-throw or exit here
-            // throw new RuntimeException("Failed to initialize database tables", e);
         }
     }
 
     /**
-     * Registers a new user. Uses try-with-resources for connection and prepared statements.
+     * Registers a new user, hashing the password before storage.
+     * Uses try-with-resources for connection and parameterized queries.
      * @param username The username.
-     * @param password The password (stored as plain text - BAD PRACTICE).
+     * @param plainTextPassword The user's chosen password (will be hashed).
      * @return true if registration is successful, false otherwise.
      */
-    public boolean registerUser(String username, String password) {
-        if (!isInputValid(username, password)) return false;
+    public boolean registerUser(String username, String plainTextPassword) {
+        if (!isInputValid(username, plainTextPassword)) return false;
 
+        // SQL Injection Prevention: Using PreparedStatement
         String checkUserSql = "SELECT id FROM users WHERE username = ?";
-        String insertUserSql = "INSERT INTO users (username, password) VALUES (?, ?)";
+        // SECURITY: Store password_hash, not password
+        String insertUserSql = "INSERT INTO users (username, password_hash) VALUES (?, ?)";
 
-        // Use try-with-resources for the connection
         try (Connection conn = getConnection()) {
-            // Check if user exists first
+            // Check if user exists first (using PreparedStatement)
             try (PreparedStatement checkStmt = conn.prepareStatement(checkUserSql)) {
                 checkStmt.setString(1, username);
-                // Use try-with-resources for ResultSet
                 try (ResultSet rs = checkStmt.executeQuery()) {
                     if (rs.next()) {
                         System.out.println("Registration failed: Username '" + username + "' already exists.");
                         return false; // User exists
                     }
-                } // ResultSet automatically closed here
-            } // Check PreparedStatement automatically closed here
+                }
+            }
 
-            // If user does not exist, insert new user
+            // SECURITY: Hash the password using BCrypt with a generated salt
+            String hashedPassword = BCrypt.hashpw(plainTextPassword, BCrypt.gensalt(AppConfig.BCRYPT_LOG_ROUNDS));
+
+            // Insert new user with hashed password (using PreparedStatement)
             try (PreparedStatement insertStmt = conn.prepareStatement(insertUserSql)) {
                 insertStmt.setString(1, username);
-                insertStmt.setString(2, password); // Store plain text (BAD PRACTICE!)
+                insertStmt.setString(2, hashedPassword); // Store the hash
                 int result = insertStmt.executeUpdate();
                 if (result > 0) {
                      System.out.println("User '" + username + "' registered successfully.");
                      return true;
                 } else {
-                    // This case is less likely with auto-increment but possible
                     System.err.println("Registration failed: Insert returned 0 rows affected.");
                     return false;
                 }
-            } // Insert PreparedStatement automatically closed here
+            }
 
         } catch (SQLException e) {
             handleError("Error during user registration for username: " + username, e);
             return false;
-        } // Connection automatically closed here
+        } catch (Exception e) { // Catch potential errors from BCrypt (though less likely here)
+            handleError("Error during password hashing for user: " + username, e);
+            return false;
+        }
     }
 
     /**
-     * Validates user credentials. Uses try-with-resources for connection and prepared statement.
+     * Validates user credentials by comparing the provided password against the stored hash.
+     * Uses try-with-resources for connection and parameterized queries.
      * @param username The username.
-     * @param password The password to check.
-     * @return true if the username exists and the password matches, false otherwise.
+     * @param plainTextPassword The password attempt to check.
+     * @return true if the username exists and the password matches the stored hash, false otherwise.
      */
-    public boolean validateUser(String username, String password) {
-        if (!isInputValid(username, password)) return false;
+    public boolean validateUser(String username, String plainTextPassword) {
+        if (!isInputValid(username, plainTextPassword)) return false;
 
-        String querySql = "SELECT password FROM users WHERE username = ?";
+        // SQL Injection Prevention: Using PreparedStatement
+        // SECURITY: Retrieve password_hash
+        String querySql = "SELECT password_hash FROM users WHERE username = ?";
 
-        // Use try-with-resources for Connection, PreparedStatement, and ResultSet
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(querySql)) {
 
             pstmt.setString(1, username);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    String storedPassword = rs.getString("password");
-                    // Plain text comparison (BAD PRACTICE!)
-                    return storedPassword != null && storedPassword.equals(password);
+                    String storedHash = rs.getString("password_hash");
+
+                    // SECURITY: Use BCrypt.checkpw to compare plaintext against the hash
+                    if (storedHash != null) {
+                        try {
+                            return BCrypt.checkpw(plainTextPassword, storedHash);
+                        } catch (IllegalArgumentException ex) {
+                             // Handle cases where the stored hash might be invalid/corrupted
+                             handleError("Invalid hash format encountered for user: " + username, ex);
+                             return false;
+                        }
+                    } else {
+                         // Should not happen if NOT NULL constraint is enforced, but good to check
+                         System.err.println("Warning: Retrieved null password hash for user: " + username);
+                         return false;
+                    }
                 } else {
                     return false; // Username not found
                 }
-            } // ResultSet automatically closed here
+            }
         } catch (SQLException e) {
             handleError("Error validating user: " + username, e);
             return false;
-        } // Connection and PreparedStatement automatically closed here
+        }
     }
 
     /**
-     * Saves a high score for a user. Uses try-with-resources for connection and prepared statement.
+     * Saves a high score for a user. Uses try-with-resources for connection and parameterized query.
+     * (No change needed here for security issues addressed, already uses PreparedStatement)
      * @param username The user who achieved the score.
      * @param score The score value.
      */
@@ -545,9 +560,9 @@ class DatabaseManager {
             return;
         }
 
+        // SQL Injection Prevention: Using PreparedStatement
         String insertScoreSql = "INSERT INTO high_scores (username, score) VALUES (?, ?)";
 
-        // Use try-with-resources for Connection and PreparedStatement
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(insertScoreSql)) {
 
@@ -558,19 +573,20 @@ class DatabaseManager {
 
         } catch (SQLException e) {
             handleError("Error saving score for user: " + username, e);
-        } // Connection and PreparedStatement automatically closed here
+        }
     }
 
     /**
-     * Retrieves the top high scores. Uses try-with-resources for connection, prepared statement, and result set.
+     * Retrieves the top high scores. Uses try-with-resources for connection, parameterized query, and result set.
+     * (No change needed here for security issues addressed, already uses PreparedStatement)
      * @return A list of formatted strings representing the high scores. Returns a list containing an error message on failure.
      */
     public List<String> getHighScores() {
         int limit = AppConfig.HIGH_SCORE_LIMIT;
         List<String> scores = new ArrayList<>();
+        // SQL Injection Prevention: Using PreparedStatement (for limit)
         String queryHighScores = "SELECT username, score FROM high_scores ORDER BY score DESC LIMIT ?";
 
-        // Use try-with-resources for Connection, PreparedStatement, and ResultSet
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(queryHighScores)) {
 
@@ -585,47 +601,40 @@ class DatabaseManager {
                 if (rank == 1) { // No scores found
                     scores.add("No scores recorded yet.");
                 }
-            } // ResultSet automatically closed here
+            }
 
         } catch (SQLException e) {
             handleError("Error fetching high scores", e);
-            scores.clear(); // Clear any partial results
+            scores.clear();
             scores.add("Error loading scores due to database issue.");
-        } // Connection and PreparedStatement automatically closed here
+        }
 
         return scores;
     }
 
     /**
-     * This method is no longer needed as connections are managed by try-with-resources.
-     * Kept for reference, but should not be called.
-     * @deprecated Connections are now managed automatically per operation.
+     * @deprecated Connections are now managed automatically per operation via try-with-resources.
      */
     @Deprecated
     public void closeConnection() {
-        System.out.println("DatabaseManager.closeConnection() called, but connection management is now automatic (try-with-resources). This method is deprecated.");
-        // Original logic removed, no shared connection to close.
+        System.out.println("DatabaseManager.closeConnection() is deprecated. Connection management is automatic.");
     }
 
     /**
-     * Basic input validation for username and password.
-     * @param username The username string.
-     * @param password The password string.
-     * @return true if inputs are non-null and non-empty (trimmed for username).
+     * Basic input validation for username and password (before hashing).
      */
     private boolean isInputValid(String username, String password) {
+        // Basic checks, could be enhanced (e.g., length, characters)
         return username != null && !username.trim().isEmpty() && password != null && !password.isEmpty();
     }
 
     /**
      * Centralized error logging for database operations.
-     * @param message Context message for the error.
-     * @param e The exception that occurred.
      */
     private void handleError(String message, Exception e) {
-        System.err.println("DATABASE ERROR: " + message + " - " + e.getMessage());
-        // Optionally log the stack trace for debugging, but might be verbose for production
-        // e.printStackTrace();
+        System.err.println("DATABASE/SECURITY ERROR: " + message + " - " + e.getMessage());
+        // Consider more robust logging in a real application (e.g., using a logging framework)
+        // e.printStackTrace(); // Uncomment for detailed debugging if needed
     }
 }
 
@@ -943,7 +952,8 @@ class InputHandler extends KeyAdapter {
 // --- UI Panels ---
 
 /**
- * Login Screen Panel - Handles user login/registration UI. (Unchanged logic, interacts with improved DatabaseManager)
+ * Login Screen Panel - Handles user login/registration UI.
+ * Interacts with the REFACTORED DatabaseManager for secure operations.
  */
 class LoginScreen extends JPanel implements ActionListener {
     private JTextField usernameField;
@@ -953,14 +963,14 @@ class LoginScreen extends JPanel implements ActionListener {
     private JLabel statusLabel;
     private JTextArea highScoreTextArea;
     private final TerribleGame mainApp;
-    private final DatabaseManager dbManager;
+    private final DatabaseManager dbManager; // Uses the refactored, secure DB Manager
 
     public LoginScreen(TerribleGame mainApp, DatabaseManager dbManager) {
         if (mainApp == null || dbManager == null) {
             throw new IllegalArgumentException("MainApp and DatabaseManager cannot be null for LoginScreen");
         }
         this.mainApp = mainApp;
-        this.dbManager = dbManager;
+        this.dbManager = dbManager; // Injected secure manager
         setupUI();
     }
 
@@ -1032,7 +1042,7 @@ class LoginScreen extends JPanel implements ActionListener {
     }
 
      public void refreshHighScores() {
-        List<String> scores = dbManager.getHighScores(); // Uses improved DB Manager
+        List<String> scores = dbManager.getHighScores(); // Uses secure DB Manager
         highScoreTextArea.setText("--- High Scores (Top " + AppConfig.HIGH_SCORE_LIMIT + ") ---\n");
         if (scores != null) {
             for (String scoreLine : scores) {
@@ -1053,41 +1063,51 @@ class LoginScreen extends JPanel implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         String username = usernameField.getText().trim();
         char[] passwordChars = passwordField.getPassword();
-        String password = new String(passwordChars);
-        java.util.Arrays.fill(passwordChars, ' '); // Clear password from memory
+        // SECURITY: Handle password carefully. Convert to String only when needed by BCrypt.
+        String plainTextPassword = new String(passwordChars);
 
-        if (username.isEmpty() || password.isEmpty()) {
+        if (username.isEmpty() || plainTextPassword.isEmpty()) {
             statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
             statusLabel.setText("Username and password cannot be empty.");
+            // SECURITY: Clear the char array even on validation failure
+            java.util.Arrays.fill(passwordChars, ' ');
             return;
         }
 
-        if (e.getSource() == loginButton) {
-            // Uses improved DB Manager method
-            if (dbManager.validateUser(username, password)) {
-                statusLabel.setForeground(AppConfig.LOGIN_STATUS_SUCCESS_COLOR);
-                statusLabel.setText("Login Successful!");
-                Timer switchTimer = new Timer(500, ae -> mainApp.userLoggedIn(username));
-                switchTimer.setRepeats(false);
-                switchTimer.start();
-            } else {
-                statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
-                statusLabel.setText("Login failed. Check credentials.");
-                passwordField.setText("");
+        try {
+            if (e.getSource() == loginButton) {
+                // SECURITY: Use validateUser which uses BCrypt.checkpw
+                if (dbManager.validateUser(username, plainTextPassword)) {
+                    statusLabel.setForeground(AppConfig.LOGIN_STATUS_SUCCESS_COLOR);
+                    statusLabel.setText("Login Successful!");
+                    Timer switchTimer = new Timer(500, ae -> mainApp.userLoggedIn(username));
+                    switchTimer.setRepeats(false);
+                    switchTimer.start();
+                } else {
+                    statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
+                    statusLabel.setText("Login failed. Check credentials.");
+                    passwordField.setText(""); // Clear password field on failure
+                }
+            } else if (e.getSource() == registerButton) {
+                 // SECURITY: Use registerUser which uses BCrypt.hashpw
+                if (dbManager.registerUser(username, plainTextPassword)) {
+                    statusLabel.setForeground(AppConfig.LOGIN_STATUS_SUCCESS_COLOR);
+                    statusLabel.setText("Registration successful! Please log in.");
+                    usernameField.setText(""); // Clear fields after successful registration
+                    passwordField.setText("");
+                    // Optionally refresh high scores if needed: refreshHighScores();
+                } else {
+                    statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
+                    // Give a slightly more generic error message for security
+                    statusLabel.setText("Registration failed (username might exist or error occurred).");
+                    passwordField.setText(""); // Clear password field on failure
+                }
             }
-        } else if (e.getSource() == registerButton) {
-             // Uses improved DB Manager method
-            if (dbManager.registerUser(username, password)) {
-                statusLabel.setForeground(AppConfig.LOGIN_STATUS_SUCCESS_COLOR);
-                statusLabel.setText("Registration successful! Please log in.");
-                usernameField.setText("");
-                passwordField.setText("");
-                // refreshHighScores(); // Optionally refresh scores now
-            } else {
-                statusLabel.setForeground(AppConfig.LOGIN_STATUS_ERROR_COLOR);
-                statusLabel.setText("Registration failed (username might exist).");
-                passwordField.setText("");
-            }
+        } finally {
+             // SECURITY: Always clear the plaintext password from memory immediately after use
+             java.util.Arrays.fill(passwordChars, ' ');
+             // Note: The 'plainTextPassword' String object will be garbage collected later.
+             // Clearing the char array is the most critical step for immediate removal.
         }
     }
 }
@@ -1198,13 +1218,13 @@ class GamePanel extends JPanel {
     }
 }
 
-// --- Game Controller (Unchanged logic, interacts with improved DatabaseManager) ---
+// --- Game Controller (Interacts with improved DatabaseManager) ---
 class GameController implements ActionListener {
     private final GameState gameState;
     private final GameLogic gameLogic;
     private final GamePanel gamePanel;
     private final Timer gameTimer;
-    private final DatabaseManager dbManager; // Uses improved DB Manager
+    private final DatabaseManager dbManager; // Uses refactored, secure DB Manager
     private final TerribleGame mainApp;
 
     public GameController(GameState state, GameLogic logic, GamePanel panel, DatabaseManager dbMgr, TerribleGame app) {
@@ -1214,7 +1234,7 @@ class GameController implements ActionListener {
         this.gameState = state;
         this.gameLogic = logic;
         this.gamePanel = panel;
-        this.dbManager = dbMgr;
+        this.dbManager = dbMgr; // Injected secure manager
         this.mainApp = app;
 
         this.gameTimer = new Timer(AppConfig.GAME_TICK_MS, this);
@@ -1260,7 +1280,7 @@ class GameController implements ActionListener {
         String username = mainApp.getCurrentUsername();
         if (username != null && gameState.getScore() > 0) {
             System.out.println("Saving score for user: " + username);
-            dbManager.saveScore(username, gameState.getScore()); // Uses improved DB Manager
+            dbManager.saveScore(username, gameState.getScore()); // Uses secure DB Manager
         } else {
             System.out.println("Score not saved (no user logged in or score is zero).");
         }
@@ -1298,7 +1318,7 @@ class GameController implements ActionListener {
 
 
 // --- Main Application Class (JFrame) ---
-// Minor change: Removed call to dbManager.closeConnection() in shutdown().
+// Uses the refactored DatabaseManager. No global DB connection closing needed.
 public class TerribleGame extends JFrame {
 
     // Core components
@@ -1306,7 +1326,7 @@ public class TerribleGame extends JFrame {
     private final GameLogic gameLogic;
     private final GameController gameController;
     private final InputHandler inputHandler;
-    private final DatabaseManager dbManager; // Uses improved DB Manager
+    private final DatabaseManager dbManager; // *** Uses the refactored, secure DatabaseManager ***
 
     // UI Panels
     private final GamePanel gamePanel;
@@ -1323,12 +1343,14 @@ public class TerribleGame extends JFrame {
         super(AppConfig.APP_TITLE);
 
         // Initialize components (DB Manager, State, Logic, Panels, Controller, Input)
-        // *** Uses the improved DatabaseManager ***
-        dbManager = new DatabaseManager();
+        // *** Instantiates the refactored DatabaseManager ***
+        dbManager = new DatabaseManager(); // Secure version is created
         gameState = new GameState();
         gameLogic = new GameLogic(gameState);
+        // *** LoginScreen receives the secure DatabaseManager ***
         loginScreen = new LoginScreen(this, dbManager);
         gamePanel = new GamePanel(gameState);
+        // *** GameController receives the secure DatabaseManager ***
         gameController = new GameController(gameState, gameLogic, gamePanel, dbManager, this);
         inputHandler = new InputHandler(gameState, gameController);
 
@@ -1350,16 +1372,16 @@ public class TerribleGame extends JFrame {
     }
 
     private void setupWindow() {
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Handle closing via listener
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                 System.out.println("Window closing event received.");
-                gameController.exitGame(); // Clean shutdown via controller
+                gameController.exitGame();
             }
         });
         setResizable(false);
-        setFocusable(false); // Frame shouldn't steal focus
+        setFocusable(false);
     }
 
     private JPanel setupCardLayoutAndPanels() {
@@ -1379,7 +1401,7 @@ public class TerribleGame extends JFrame {
             boolean focused = gamePanel.requestFocusInWindow();
              if (focused) System.out.println("GamePanel focus requested successfully.");
              else System.err.println("Warning: GamePanel failed to gain focus.");
-             gameController.startGame(); // Start game AFTER view switch and focus attempt
+             gameController.startGame();
         });
     }
 
@@ -1388,25 +1410,41 @@ public class TerribleGame extends JFrame {
          gameController.stopGameLoop();
          this.currentUsername = null;
          loginScreen.clearForm();
-         loginScreen.refreshHighScores(); // Uses improved DB Manager
+         loginScreen.refreshHighScores(); // Uses secure DB Manager
          cardLayout.show(mainPanel, AppConfig.LOGIN_PANEL_ID);
          SwingUtilities.invokeLater(() -> usernameFieldRequestFocus(loginScreen));
      }
 
      private void usernameFieldRequestFocus(LoginScreen login) {
+         // Attempt to find and focus the username field
+         Component[] components = login.getComponents();
          Component userField = null;
-         for (Component comp : login.getComponents()) {
-             if (comp instanceof JTextField) { userField = comp; break; }
+         
+         // Look for a JTextField that comes after a "Username:" JLabel
+         for (int i = 1; i < components.length; i++) {
+             if (components[i] instanceof JTextField &&
+                 components[i-1] instanceof JLabel &&
+                 "Username:".equals(((JLabel)components[i-1]).getText())) {
+                 userField = components[i];
+                 break;
+             }
          }
+         
+         // If not found, fall back to the first JTextField
+         if (userField == null) {
+             for (Component comp : components) {
+                 if (comp instanceof JTextField) {
+                     userField = comp;
+                     break;
+                 }
+             }
+         }
+         
+         // Request focus on the found field or fall back to panel
          if (userField != null) {
-             boolean focused = userField.requestFocusInWindow();
-              if (focused) System.out.println("Username field focus requested successfully.");
-              else {
-                  System.err.println("Warning: Username field failed to gain focus.");
-                  login.requestFocusInWindow(); // Fallback
-              }
+             userField.requestFocusInWindow();
          } else {
-             login.requestFocusInWindow(); // Fallback if not found
+             login.requestFocusInWindow();
          }
      }
 
@@ -1431,13 +1469,12 @@ public class TerribleGame extends JFrame {
     /** Handles graceful shutdown of the application. */
     public void shutdown() {
         System.out.println("MainApp: Initiating shutdown...");
-        // 1. Stop game loop (might be already stopped)
+        // 1. Stop game loop
         gameController.stopGameLoop();
 
-        // 2. *** REMOVED: dbManager.closeConnection(); ***
-        // Connection closing is now handled automatically by try-with-resources
-        // in the DatabaseManager methods. No explicit global close needed.
-        System.out.println("Database connections are managed per-operation (try-with-resources). No global connection to close.");
+        // 2. *** No explicit DB connection closing needed ***
+        // Connections are managed via try-with-resources within DatabaseManager methods.
+        System.out.println("Database connections are managed per-operation (try-with-resources).");
 
         // 3. Dispose UI resources
         dispose();
@@ -1449,16 +1486,14 @@ public class TerribleGame extends JFrame {
     // --- Main Entry Point ---
     public static void main(String[] args) {
         System.out.println("Application starting with title: " + AppConfig.APP_TITLE);
+        System.out.println("NOTE: Ensure the jBCrypt library is included in the classpath.");
 
         // Ensure GUI creation happens on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
-            // Create the main application instance
-            new TerribleGame(); // Instance creation starts the application
+            new TerribleGame(); // Creates and shows the main application window
 
-            // Optional: Shutdown hook (keep it simple)
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 System.out.println("JVM Shutdown Hook executing...");
-                // Avoid complex operations here.
             }, "ShutdownCleanupThread"));
         });
     }
