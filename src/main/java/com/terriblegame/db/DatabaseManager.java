@@ -7,13 +7,24 @@ import org.mindrot.jbcrypt.BCrypt;
 import com.terriblegame.config.AppConfig;
 
 /**
- * Encapsulates all database interactions for the game, including user authentication
- * and high score management. Implements security best practices like using
- * parameterized queries (PreparedStatements) to prevent SQL injection and
- * BCrypt for password hashing. Manages database connections using try-with-resources
- * for automatic closure.
+ * SQLite-based implementation of {@link IGameDatabase} using JDBC.
+ *
+ * Implementation Details:
+ * - Uses BCrypt for password hashing (work factor configurable)
+ * - Employs prepared statements for all SQL queries
+ * - Manages connections through try-with-resources
+ * - Creates tables automatically if they don't exist
+ *
+ * Threading Considerations:
+ * - Not thread-safe; concurrent access must be externally synchronized
+ * - Each operation opens and closes its own connection
+ *
+ * Dependencies:
+ * - Requires SQLite JDBC driver
+ * - Uses JBCrypt for password hashing
+ * - Relies on AppConfig for database parameters
  */
-public class DatabaseManager {
+public class DatabaseManager implements IGameDatabase {
     private final String dbUrl;
     private final String jdbcDriver;
 

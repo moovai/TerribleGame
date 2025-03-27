@@ -4,12 +4,16 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 
 /**
- * Abstract base class for all interactive entities within the game world,
- * such as the player, enemies, bullets, and power-ups.
- * Defines common properties like position, size, and collision bounds,
- * as well as abstract methods for updating state and drawing.
+ * Base implementation of {@link IGameObject} that provides common functionality
+ * for game entities. This implementation uses a rectangular boundary for collision
+ * detection and maintains position/size data.
+ *
+ * Implementation Notes:
+ * - Uses a {@link Rectangle} for efficient collision detection
+ * - Position updates require manual bounds synchronization via {@link #updateBounds()}
+ * - Subclasses must implement {@link #update()} and {@link #draw(Graphics2D)}
  */
-public abstract class GameObject {
+public abstract class GameObject implements IGameObject {
     /** The x-coordinate of the top-left corner of the object. */
     protected int x;
     /** The y-coordinate of the top-left corner of the object. */
@@ -104,12 +108,14 @@ public abstract class GameObject {
     }
 
     /**
-     * Checks if this game object's bounds intersect with another game object's bounds.
+     * Implementation of {@link IGameObject#intersects(IGameObject)}.
+     * Uses rectangle intersection for efficient collision detection.
      *
-     * @param other The other {@link GameObject} to check for intersection.
-     * @return {@code true} if the bounds intersect, {@code false} otherwise.
+     * @param other The other game object to check for intersection
+     * @return true if the bounds intersect, false otherwise
      */
-    public boolean intersects(GameObject other) {
+    @Override
+    public boolean intersects(IGameObject other) {
         return this.bounds.intersects(other.getBounds());
     }
 }

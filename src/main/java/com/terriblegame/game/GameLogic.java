@@ -8,12 +8,21 @@ import com.terriblegame.config.AppConfig;
 import com.terriblegame.model.*;
 
 /**
- * Manages the core game mechanics and updates the {@link GameState}.
- * This includes handling player actions (shooting), updating object positions,
- * detecting collisions, managing object lifecycles (spawning, removal),
- * and applying game rules. Operates on a provided {@link GameState} instance.
+ * Implementation of {@link IGameLogic} that manages game mechanics using a
+ * simple update loop and direct object manipulation.
+ *
+ * Implementation Notes:
+ * - Uses {@link java.util.Random} for spawn probability calculations
+ * - Employs separate lists for collision tracking to avoid concurrent modification
+ * - Object updates are processed in order: player, bullets, enemies, power-ups
+ * - Collision detection uses rectangular bounds for efficiency
+ *
+ * Performance Considerations:
+ * - O(n²) collision detection between bullets and enemies
+ * - Uses iterators for safe object removal during updates
+ * - Maintains separate lists for removal to avoid collection modification issues
  */
-public class GameLogic {
+public class GameLogic implements IGameLogic {
     private final Random randomGenerator = new Random();
     private final GameState gameState; // Reference to the mutable game state
 
@@ -208,5 +217,14 @@ public class GameLogic {
         int powerUpSpeed = AppConfig.POWERUP_BASE_SPEED + speedVar;
         // Create and add the new power-up
         gameState.addPowerUp(new PowerUp(powerUpX, powerUpY, powerUpSpeed));
+    }
+
+    /**
+     * Implementation Note: Returns direct reference to game state
+     * for efficiency. Callers should treat it as read-only.
+     */
+    @Override
+    public GameState getGameState() {
+        return gameState;
     }
 }

@@ -7,21 +7,42 @@ import com.terriblegame.controller.GameController;
 import com.terriblegame.model.Player;
 
 /**
- * Handles keyboard input for the game. Extends {@link KeyAdapter} to listen for
- * key press and release events. Translates key events into actions on the
- * {@link Player} object within the {@link GameState} or triggers actions
- * on the {@link GameController} (like pausing, restarting, exiting).
+ * AWT-based implementation of {@link IInputHandler} that maps keyboard events
+ * to game actions.
+ *
+ * Implementation Details:
+ * - Uses AWT KeyAdapter for event handling
+ * - Supports both WASD and arrow key controls
+ * - Maintains boolean state for each input
+ * - Updates Player state directly for movement
+ * - Delegates game control actions to GameController
+ *
+ * Technical Notes:
+ * - All event handling occurs on AWT event dispatch thread
+ * - Input state is maintained even when game is paused
+ * - Movement flags are cleared on key release
+ * - Shoot flag is consumed by game logic
  */
-public class InputHandler extends KeyAdapter {
+public class InputHandler extends KeyAdapter implements IInputHandler {
+    // Input state tracking
+    private boolean upPressed;
+    private boolean downPressed;
+    private boolean leftPressed;
+    private boolean rightPressed;
+    private boolean shootPressed;
+    private boolean pausePressed;
+    
     private final GameState gameState;
     private final GameController gameController;
 
     /**
-     * Constructs a new InputHandler.
+     * Constructs a new InputHandler with dependencies.
      *
-     * @param state      The {@link GameState} containing the player object to control. Must not be null.
-     * @param controller The {@link GameController} to notify for game-level actions (pause, etc.). Must not be null.
-     * @throws IllegalArgumentException if either {@code state} or {@code controller} is null.
+     * Implementation Note: All input states are initialized to false.
+     *
+     * @param state The game state for player updates
+     * @param controller The game controller for system actions
+     * @throws IllegalArgumentException if dependencies are null
      */
     public InputHandler(GameState state, GameController controller) {
         if (state == null || controller == null) {
@@ -29,103 +50,155 @@ public class InputHandler extends KeyAdapter {
         }
         this.gameState = state;
         this.gameController = controller;
+        reset(); // Initialize all input states to false
     }
 
-    /**
-     * Handles key pressed events.
-     * Maps specific keys (P, ESC, R) to game control actions (pause, exit, restart).
-     * Maps movement keys (Arrows, WASD) and shooting keys (Space, Ctrl) to player actions,
-     * but only if the game is actively running (not paused, not game over).
-     *
-     * @param e The {@link KeyEvent} associated with the key press.
-     */
     @Override
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
 
-        // --- Game Control Keys (handled regardless of game running state, except restart) ---
+        // Update input state flags
         switch (keyCode) {
-            case KeyEvent.VK_P: // Toggle Pause
+            case KeyEvent.VK_LEFT:
+            case KeyEvent.VK_A:
+                leftPressed = true;
+                break;
+            case KeyEvent.VK_RIGHT:
+            case KeyEvent.VK_D:
+                rightPressed = true;
+                break;
+            case KeyEvent.VK_UP:
+            case KeyEvent.VK_W:
+                upPressed = true;
+                break;
+            case KeyEvent.VK_DOWN:
+            case KeyEvent.VK_S:
+                downPressed = true;
+                break;
+            case KeyEvent.VK_SPACE:
+            case KeyEvent.VK_CONTROL:
+                shootPressed = true;
+                break;
+            case KeyEvent.VK_P:
+                pausePressed = true;
                 gameController.togglePause();
-                return; // Consume event
-            case KeyEvent.VK_ESCAPE: // Exit Game
+                break;
+            case KeyEvent.VK_ESCAPE:
                 gameController.exitGame();
-                return; // Consume event
-            case KeyEvent.VK_R: // Restart Game (only if game is over)
+                break;
+            case KeyEvent.VK_R:
                 if (gameState.isGameOver()) {
-                    System.out.println("Restart key (R) pressed - Requesting restart.");
                     gameController.requestRestart();
                 }
-                return; // Consume event
+                break;
         }
 
-        // --- Player Control Keys (only handled if game is running, not paused, not game over) ---
-        if (gameState.isRunning() && !gameState.isPaused() && !gameState.isGameOver()) {
-            Player player = gameState.getPlayer();
-            // Defensive check, although player should exist if game is running.
-            if (player == null) return;
+        // Update player state if game is active
+        updatePlayerState();
+    }
 
-            // Set movement/shooting flags based on key code
-            switch (keyCode) {
-                case KeyEvent.VK_LEFT:
-                case KeyEvent.VK_A:
-                    player.setMovingLeft(true);
-                    break;
-                case KeyEvent.VK_RIGHT:
-                case KeyEvent.VK_D:
-                    player.setMovingRight(true);
-                    break;
-                case KeyEvent.VK_UP:
-                case KeyEvent.VK_W:
-                    player.setMovingUp(true);
-                    break;
-                case KeyEvent.VK_DOWN:
-                case KeyEvent.VK_S:
-                    player.setMovingDown(true);
-                    break;
-                case KeyEvent.VK_SPACE:
-                case KeyEvent.VK_CONTROL:
-                    player.setWantsToShoot(true);
-                    break;
-            }
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int keyCode = e.getKeyCode();
+
+        // Update input state flags
+        switch (keyCode) {
+            case KeyEvent.VK_LEFT:
+            case KeyEvent.VK_A:
+                leftPressed = false;
+                break;
+            case KeyEvent.VK_RIGHT:
+            case KeyEvent.VK_D:
+                rightPressed = false;
+                break;
+            case KeyEvent.VK_UP:
+            case KeyEvent.VK_W:
+                upPressed = false;
+                break;
+            case KeyEvent.VK_DOWN:
+            case KeyEvent.VK_S:
+                downPressed = false;
+                break;
+            case KeyEvent.VK_SPACE:
+            case KeyEvent.VK_CONTROL:
+                shootPressed = false;
+                break;
+            case KeyEvent.VK_P:
+                pausePressed = false;
+                break;
+        }
+
+        // Update player state if game is active
+        updatePlayerState();
+    }
+
+    @Override
+    public boolean isUpPressed() {
+        return upPressed;
+    }
+
+    @Override
+    public boolean isDownPressed() {
+        return downPressed;
+    }
+
+    @Override
+    public boolean isLeftPressed() {
+        return leftPressed;
+    }
+
+    @Override
+    public boolean isRightPressed() {
+        return rightPressed;
+    }
+
+    @Override
+    public boolean isShootPressed() {
+        return shootPressed;
+    }
+
+    @Override
+    public boolean isPausePressed() {
+        return pausePressed;
+    }
+
+    @Override
+    public void reset() {
+        upPressed = false;
+        downPressed = false;
+        leftPressed = false;
+        rightPressed = false;
+        shootPressed = false;
+        pausePressed = false;
+        
+        // Also reset player movement state if available
+        if (gameState != null && gameState.getPlayer() != null) {
+            Player player = gameState.getPlayer();
+            player.setMovingUp(false);
+            player.setMovingDown(false);
+            player.setMovingLeft(false);
+            player.setMovingRight(false);
+            player.setWantsToShoot(false);
         }
     }
 
     /**
-     * Handles key released events.
-     * Clears the corresponding movement flags on the {@link Player} object when
-     * movement keys (Arrows, WASD) are released. Shooting flag is not cleared here,
-     * it's consumed when the bullet is fired.
+     * Updates the player's movement and action states based on current input flags.
+     * Only applies updates if the game is running and not paused.
      *
-     * @param e The {@link KeyEvent} associated with the key release.
+     * Implementation Note: This method consolidates all player state updates
+     * to ensure consistent behavior between key press and release events.
      */
-    @Override
-    public void keyReleased(KeyEvent e) {
-        int keyCode = e.getKeyCode();
-        Player player = gameState.getPlayer();
-        // Defensive check
-        if (player == null) return;
-
-        // Clear movement flags based on released key
-        switch (keyCode) {
-            case KeyEvent.VK_LEFT:
-            case KeyEvent.VK_A:
-                player.setMovingLeft(false);
-                break;
-            case KeyEvent.VK_RIGHT:
-            case KeyEvent.VK_D:
-                player.setMovingRight(false);
-                break;
-            case KeyEvent.VK_UP:
-            case KeyEvent.VK_W:
-                player.setMovingUp(false);
-                break;
-            case KeyEvent.VK_DOWN:
-            case KeyEvent.VK_S:
-                player.setMovingDown(false);
-                break;
-            // No action needed for releasing shoot key (SPACE/CONTROL) as Player.shoot() resets the flag.
-            // No action needed for releasing P, ESC, R.
+    private void updatePlayerState() {
+        if (gameState.isRunning() && !gameState.isPaused() && !gameState.isGameOver()) {
+            Player player = gameState.getPlayer();
+            if (player != null) {
+                player.setMovingUp(upPressed);
+                player.setMovingDown(downPressed);
+                player.setMovingLeft(leftPressed);
+                player.setMovingRight(rightPressed);
+                player.setWantsToShoot(shootPressed);
+            }
         }
     }
 }
